@@ -69,6 +69,12 @@ Then, in the repository you want to keep clean:
 }
 ```
 
+## Outside sources and the activity log
+
+kb can also keep information outside the repository in agreement with it. List a task manager, Claude memory or sibling repositories under `sources` in `kb.json`, each with read or write access and what it is the source of truth for. Sweeps then cross-reference them, decide which copy is right, and correct the rest. Without `sources`, kb looks only at the repository.
+
+Every action kb takes, and the reason for it, goes to `.kb.log`, a gitignored file at the root of the main checkout.
+
 ## Scheduling
 
 `/kb:setup` installs one of these:

@@ -29,6 +29,7 @@ For each folder or pattern, ask what ends the usefulness of a doc of this kind:
 | An event: a merge, a fix, a newer version of the same doc, the passing of time | `ephemeral`, with an `exit` sentence naming that event |
 | It is source material from outside the project | `raw` |
 | It is not project documentation at all: finance, legal, marketing copy, generated output | add it to `ignore` |
+| It is the person's scratch space: notes, drafts, a journal | add it to `ignore`. kb never reads or changes it |
 
 Give an ephemeral rule `maxAgeDays` or `keepLatest` when its exit is mechanical, as with run reports and daily notes. The sweep can then expire those docs without reading for proof.
 
@@ -36,13 +37,34 @@ Existing docs that must stay true where they are (`README.md`, `CLAUDE.md`, a ru
 
 Show the person the proposed classification as a table of pattern, class, exit condition, doc count and line count. Ask about the groups you were unsure of before writing anything. A wrong class is the one setup mistake that costs something later: `ephemeral` on a doc that should be a record gets it deleted.
 
-Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one. Set `backlog` to a Markdown file in the repository where this project keeps open work. A sweep can only write to files, so if the project tracks work in an outside tool (Jira, Linear, a sprint board), create `docs/BACKLOG.md` as an inbox that a person empties into that tool, and say so in the pull request. Run the summary again and confirm that nothing important is left unclassified.
+Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one. Set `backlog` to a Markdown file in the repository where this project keeps open work. If the project also tracks work in an outside tool (Jira, Linear, Todoist, a sprint board), still create the backlog file as the inbox for open work found in docs, and list the tool under `sources` so sweeps can keep the two in agreement. Run the summary again and confirm that nothing important is left unclassified.
 
-## 3. Create the wiki
+## 3. Outside sources
+
+Ask the person where else information about this project lives, and whether kb may only read each place or also update it:
+
+- a task manager with a command-line tool, such as `td` for Todoist or `gh issue` for GitHub issues
+- Claude memory for this repository: `~/.claude/projects/<the repository path with / replaced by ->/memory/`
+- other repositories on the machine that document the same product or business
+
+Write each one to `sources` in `kb.json` as described in [config.md](config.md): how to reach it, its access, and what it is the source of truth for. Sweeps cross-reference everything listed there and bring the copies that are wrong in line with the source of truth. Leave `sources` empty when the person wants kb to look only at the repository, and always for a repository whose sweeps run in CI, where none of these tools exist.
+
+## 4. Start the activity log
+
+kb keeps a local log of every action it takes and why. Add `.kb.log` to `.gitignore`, then create the log:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" --init
+node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" setup config kb.json --why "<one line: the classes and sources chosen>"
+```
+
+The log is `.kb.log` at the root of the main checkout, so sweeps run in any worktree add to the same file.
+
+## 5. Create the wiki
 
 If the wiki folder does not exist, create it with an `index.md` that holds a title and one sentence saying that each page is listed below with the question it answers. Leave it empty otherwise. Pages arrive as sweeps distill docs into it.
 
-## 4. Tell future sessions the rules
+## 6. Tell future sessions the rules
 
 Add this section to `CLAUDE.md` (or `AGENTS.md` if that is what the project uses), adjusting the paths:
 
@@ -56,7 +78,7 @@ Add this section to `CLAUDE.md` (or `AGENTS.md` if that is what the project uses
 
 Then look for skills and scripts in the repository that generate docs, for example by searching `.claude/skills/` and `scripts/` for the doc folders. Where one writes a new file on every run, check that an ephemeral rule with `keepLatest` or `maxAgeDays` covers its output folder. Where one appends status to a living doc, propose changing it and let the person decide.
 
-## 5. Schedule the sweep
+## 7. Schedule the sweep
 
 Offer both options and install the one the person picks.
 
@@ -64,8 +86,8 @@ Offer both options and install the one the person picks.
 
 **A Claude Code routine.** Use `/schedule` to create a weekly routine in this repository whose prompt is `/kb:sweep`. The routine's environment needs this plugin installed.
 
-## 6. Hand over
+## 8. Hand over
 
-Commit `kb.json`, the wiki index, the `CLAUDE.md` section and any workflow files, and open the pull request.
+Commit `kb.json`, the `.gitignore` line, the wiki index, the `CLAUDE.md` section and any workflow files, and open the pull request.
 
 In the description, suggest the order for the first cleanup: one `/kb:sweep <folder>` per folder, starting with the folders that have the most expired docs, and leaving design docs for last because they need the most reading. Each run produces its own pull request, and merging one makes the next one start from a smaller pile.

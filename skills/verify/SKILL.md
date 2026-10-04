@@ -58,6 +58,12 @@ Do not stamp a page you reported under the three cases above.
 
 When you are verifying as part of someone's in-progress change, leave the edits in the working tree for them to commit with their work, unless they asked you to commit.
 
+Either way, log each page in the activity log: `verify` for a page you stamped, `flag` for one you reported.
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" verify verify docs/wiki/dialer-pacing.md --why "<what was false, or: all true>" --evidence "<file that shows it>"
+```
+
 Otherwise make one commit per corrected page, and one shared commit for pages that only gained a stamp:
 
 ```

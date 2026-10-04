@@ -7,7 +7,12 @@
   "wiki": "docs/wiki",
   "base": "main",
   "backlog": "docs/BACKLOG.md",
-  "ignore": ["finance/**"],
+  "ignore": ["finance/**", "notes/**"],
+  "sources": [
+    { "name": "Todoist", "how": "the `td` CLI, project Product", "access": "write", "truthFor": "which work is open and its status" },
+    { "name": "Claude memory", "how": "~/.claude/projects/-home-me-src-app/memory/", "access": "write" },
+    { "name": "marketing site", "how": "~/src/app-site", "access": "read", "truthFor": "pricing and plan names" }
+  ],
   "rules": [
     { "match": ["README.md", "CLAUDE.md", "docs/RUNBOOK.md"], "class": "living" },
     { "match": "docs/adr/**", "class": "record" },
@@ -26,6 +31,7 @@
 | `backlog` | none | Markdown file in the repository where open work goes when a doc is distilled. Sweeps also prune entries whose fix is in the code. Without it, docs that contain open work are flagged |
 | `docs` | `**/*.md`, `**/*.mdx`, `**/*.docx`, `**/*.pdf` | Globs for what counts as a document. Replaces the default |
 | `ignore` | `**/node_modules/**`, `.claude/**`, `.github/**`, `**/CHANGELOG*`, `**/LICENSE*` | Globs for documents kb should never look at. Adds to the default |
+| `sources` | none | Places outside the repository that hold information about the same project. Sweeps cross-reference them and bring wrong copies in line with the source of truth. Without it, kb looks only at the repository. See below |
 | `rules` | none | Ordered list. The first rule whose `match` fits a path decides its class |
 
 ## Rules
@@ -37,6 +43,21 @@
 | `exit` | Ephemeral only. One sentence that says what ends this kind of doc's usefulness. The sweep reads it and looks for proof |
 | `maxAgeDays` | Ephemeral only. The doc counts as expired once its last commit is older than this |
 | `keepLatest` | Ephemeral only. Of the docs this rule matches, sorted by path, all but the last N count as expired. Meant for date-prefixed file names |
+
+## Sources
+
+| Field | Meaning |
+|---|---|
+| `name` | What the source is called in logs and pull requests |
+| `how` | How to reach it: a path, or the command-line tool and the part of it that belongs to this project |
+| `access` | `read`: use it as evidence, and report what is wrong in it under "Needs you". `write`: kb may also correct it directly, and logs every change with the old value |
+| `truthFor` | Optional. What this source decides when it disagrees with another. The code always decides how the system works |
+
+Paths in `ignore` are off limits in sources too.
+
+## Activity log
+
+Every skill appends one line per action to `.kb.log` at the root of the main checkout: time, skill, action, target, where (`repo` or a source name), branch, why, evidence. Setup adds it to `.gitignore`. `scripts/log.mjs` writes it, and `node scripts/log.mjs --path` prints where it is.
 
 A doc that no rule matches is `unclassified`, and the sweep either proposes a rule for it or flags it.
 

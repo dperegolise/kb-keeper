@@ -76,6 +76,12 @@ Expect a large reduction. A 500-line design doc for a feature that has shipped u
    KB-Source: docs/HANDOFF-X.md
    ```
 
-When nothing in a doc is worth keeping, skip the wiki, delete the doc, and use `kb: delete <path>` as the subject with the same body.
+10. **Log it** in the activity log, with the same reasoning as the commit's `Exit:` line:
+
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" distill distill <doc-path> --why "<exit, in one line>" --evidence "<commit or file>"
+    ```
+
+When nothing in a doc is worth keeping, skip the wiki, delete the doc, and use `kb: delete <path>` as the subject with the same body. Log it with the action `delete`.
 
 When a person asks you directly to distill a doc, they have already decided it should go. When the sweep calls this, the sweep's rules decide whether a doc may be deleted without asking.

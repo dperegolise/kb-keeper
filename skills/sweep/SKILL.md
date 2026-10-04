@@ -54,20 +54,11 @@ Give each one a verdict:
 
 You may distill or delete without asking only when all of these hold:
 
-1. **The exit condition has happened and you can point to the proof.** `expired: true` is proof for rules based on age or count. Otherwise the proof is in the repository: the commit that fixed the bug, the code that implements the design, the newer doc that replaces this one. A "STATUS: done" line inside the doc is a lead to check, not proof.
+1. **The exit condition has happened and you can point to the proof.** `expired: true` is proof for rules based on age or count. Otherwise the proof is in the repository (the commit that fixed the bug, the code that implements the design, the newer doc that replaces this one) or in an outside source listed in `kb.json`, as described under "Outside sources". A "STATUS: done" line inside the doc is a lead to check, not proof.
 2. **Nothing lasting is lost.** Every claim that is still true, that the code cannot tell a reader, and that someone will need again is already in the wiki or goes there in this same commit.
 3. **Nothing open is lost.** Unanswered questions, unfixed findings and unbuilt parts move to the backlog named in `kb.json`. If no backlog is configured, flag the doc. The pull request is not storage: once it is merged nobody reads it again. When an open item is a question only a person can answer, such as a warning about money, accounts or a customer, put it in the backlog as a `Decide:` entry, or keep the doc and flag it. Never let the pull request hold the only copy.
 4. **Its references are handled.** Every file in `inbound` is repointed or cleaned up as the `distill` skill describes.
 5. **You read all of it.** A `.docx`, `.pdf` or other file you cannot read in full is always a flag.
-
-**Stay inside the repository.** All evidence comes from this repository and its git history. A sweep runs unattended with the person's own credentials, and what it can reach is not what it may use. Never use these as evidence:
-
-- other repositories on the machine
-- the person's task manager, email or chat
-- Claude memory files
-- outside services and APIs
-
-Never copy personal data out of them into commits, pull requests or temp files. When a doc says its items live in an outside tool, that is not proof they are handled: flag the doc.
 
 Flag the doc when any check fails or you had to guess. Also flag when:
 
@@ -87,6 +78,26 @@ Open work from distilled docs goes to the backlog, and nothing else removes it, 
 - Keep an entry short: a heading and a few lines that say what is wrong and which files it touches. Its source doc is in git history; do not copy its story.
 - Before adding, check that the problem still exists in the code. If it is already fixed, cite the fix in the commit and add nothing.
 - After the docs, check up to 10 existing entries that cite files in the sweep's scope or that name code changed since the backlog was last edited. Remove each one whose fix you can point to, in one `kb: prune backlog` commit that lists every entry it removes and its proof.
+
+## Outside sources
+
+`sources` in `kb.json` lists places outside the repository that hold information about the same project, such as a task manager, Claude memory or another repository. Without it, use only this repository and its history. With it, the sweep keeps all of them in agreement:
+
+- **Cross-reference.** For each doc you judge, look in the sources for the same subject: the task that tracks a backlog item, the memory note about a feature, a doc in a sibling repository. Use what you find as evidence, the same way you use the code.
+- **Find the source of truth.** When they disagree, the code wins on how the system works. A source wins on what its `truthFor` names. Otherwise the most recent statement you can confirm wins. When you cannot tell, it goes under "Needs you".
+- **Bring the rest in line.** Fix the repository's copies in your commits as usual. A source with `"access": "write"` you update directly. Git cannot revert that change, so log each outside write with the old value and list it under "Done" with where it happened. For a source with `"access": "read"`, list the correction under "Needs you".
+- **Respect `ignore`.** Paths in `ignore` are off limits everywhere, both as evidence and as something to change.
+- **Keep outside data out of shared places.** Put working copies under `$(git rev-parse --git-common-dir)/kb-tmp/`, not in `/tmp`, and delete them when you finish.
+
+## Log what you do
+
+Every action goes in the local activity log, with the reason, so that a person can see later what kb did and why:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" sweep <action> <target> --why "<reason>" [--evidence "<commit, file or task>"] [--where <source name>]
+```
+
+Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. The log is gitignored, so it records your reasoning without adding to the pull request.
 
 ## 4. Order and budget
 
