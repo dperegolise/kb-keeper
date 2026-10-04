@@ -88,6 +88,8 @@ Open work from distilled docs goes to the backlog, and nothing else removes it, 
 - **Bring the rest in line.** Fix the repository's copies in your commits as usual. A source with `"access": "write"` you update directly. Git cannot revert that change, so log each outside write with the old value and list it under "Done" with where it happened. For a source with `"access": "read"`, list the correction under "Needs you".
 - **Respect `ignore`.** Paths in `ignore` are off limits everywhere, both as evidence and as something to change.
 - **Keep outside data out of shared places.** Put working copies under `$(git rev-parse --git-common-dir)/kb-tmp/`, not in `/tmp`, and delete them when you finish.
+- **Keep the open-work lists in step.** When a source with `"access": "write"` is the truth for open work, an open item you move to the backlog also needs a task there. Find the existing task, or create one, and name it in the backlog entry. When you prune a backlog entry, close or update its task.
+- **Brief your helpers.** If you hand work to helper agents, give them these rules too: the `kb-tmp` folder, the `ignore` list, and that they report findings to you rather than writing to sources or the log themselves.
 
 ## Log what you do
 
@@ -97,7 +99,7 @@ Every action goes in the local activity log, with the reason, so that a person c
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" sweep <action> <target> --why "<reason>" [--evidence "<commit, file or task>"] [--where <source name>]
 ```
 
-Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. The log is gitignored, so it records your reasoning without adding to the pull request.
+Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log is gitignored, so it records your reasoning without adding to the pull request.
 
 ## 4. Order and budget
 
