@@ -59,9 +59,11 @@ You may distill or delete without asking only when all of these hold:
 
 Flag the doc when any check fails or you had to guess. Also flag when:
 
-- the doc and the code disagree and you cannot tell which is right
+- the doc and the code disagree about the main thing the doc describes, and you cannot tell which is right
 - the doc records a commitment that lives outside the code, such as a promise to a customer, a legal or financial matter, or a decision someone is still waiting on
 - the doc has not been touched for a long time, its exit condition has not happened, and it has `deadRefs`: it may be abandoned, and only a person knows
+
+A disagreement on one point does not hold up the rest of a doc. Distill the rest, leave the disputed point out of the wiki, and list it under "Needs you" with what the doc says and what the code does.
 
 For each doc you distill, follow the `kb:distill` skill. Load it before the first one.
 

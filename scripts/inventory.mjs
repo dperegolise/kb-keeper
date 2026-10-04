@@ -205,9 +205,16 @@ export function inventory({ root = process.cwd(), config: configPath, classes, p
       doc.expired = rule.maxAgeDays != null && doc.ageDays != null && doc.ageDays > rule.maxAgeDays;
     }
     if (rule?.class === 'living') {
+      // Verified as of the stamped commit, or the commit that wrote the stamp if that is later:
+      // a verifier's own edits to cited files, made alongside the stamp, are not changes to re-check.
       const sha = verified.get(p);
-      const verifiedAt = sha ? Number(tryGit(root, ['show', '-s', '--format=%ct', sha])) || null : null;
-      const since = verifiedAt ?? t ?? 0;
+      const stamped = sha
+        ? [
+            tryGit(root, ['show', '-s', '--format=%ct', `${sha}^{commit}`]),
+            tryGit(root, ['log', '-1', '--format=%ct', `-S${sha}`, '--', p]),
+          ].map(Number).filter(Boolean)
+        : [];
+      const since = stamped.length ? Math.max(...stamped) : (t ?? 0);
       const code = [...refs.get(p)].filter((r) => !docSet.has(r));
       doc.verified = sha ?? null;
       doc.changedRefs = code.filter((r) => (times.get(r) ?? 0) > since && (!diff || diff.has(r))).sort();

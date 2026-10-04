@@ -180,3 +180,12 @@ test('a page verified after the change is not listed again', () => {
   assert.deepEqual(inventory({ root, changedSince: 'base' }).docs, []);
   assert.deepEqual(doc(inventory({ root }), 'docs/wiki/dialer.md').changedRefs, []);
 });
+
+test('files a verifier edits in the same commit as the stamp are not changes', () => {
+  const sha = git(['rev-parse', '--short', 'HEAD']);
+  write('src/dialer/pacer.ts', '// see docs/wiki/dialer.md\nexport const pace = 2;\n');
+  write('docs/wiki/dialer.md', `# Dialer\nThe pacer is \`src/dialer/pacer.ts\`. Paced.\n\n<!-- verified: ${sha} -->\n`);
+  git(['add', '-A']);
+  git(['commit', '-q', '-m', 'distill'], -1);
+  assert.deepEqual(doc(inventory({ root }), 'docs/wiki/dialer.md').changedRefs, []);
+});
