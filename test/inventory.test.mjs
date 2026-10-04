@@ -189,3 +189,12 @@ test('files a verifier edits in the same commit as the stamp are not changes', (
   git(['commit', '-q', '-m', 'distill'], -1);
   assert.deepEqual(doc(inventory({ root }), 'docs/wiki/dialer.md').changedRefs, []);
 });
+
+test('a stamp naming a commit that no longer exists counts from the commit that wrote it', () => {
+  write('docs/wiki/dialer.md', '# Dialer\nThe pacer is `src/dialer/pacer.ts`. Squashed.\n\n<!-- verified: deadbee -->\n');
+  commit(-2, 'squash merge');
+  assert.deepEqual(doc(inventory({ root }), 'docs/wiki/dialer.md').changedRefs, []);
+  write('src/dialer/pacer.ts', 'export const pace = 3;\n');
+  commit(-3, 'pacer change');
+  assert.deepEqual(doc(inventory({ root }), 'docs/wiki/dialer.md').changedRefs, ['src/dialer/pacer.ts']);
+});

@@ -47,7 +47,7 @@ Expect a large reduction. A 500-line design doc for a feature that has shipped u
 
 4. **Write it in.** Use the present tense. Merge the new material into the page's existing structure instead of appending one section per source document. Name the files that implement what you describe, as repo-relative paths in backticks: the inventory script reads those paths to tell when a page needs checking again.
 
-5. **Stamp new pages.** End a page you wrote in full with `<!-- verified: <sha> -->`, using `git rev-parse --short HEAD`. When you only added to an existing page, leave its stamp alone: the stamp vouches for the whole page, and you checked only your part.
+5. **Stamp new pages.** End a page you wrote in full with `<!-- verified: <sha> -->`. Use the commit your branch started from (`git merge-base HEAD origin/<base>`, short form), or `git rev-parse --short HEAD` when you work directly on the base branch. Never stamp a commit of your own branch: rebasing or squash-merging it leaves the stamp pointing at nothing. When you only added to an existing page, leave its stamp alone: the stamp vouches for the whole page, and you checked only your part.
 
 6. **Update `index.md`:** one line per page, the link plus the question the page answers.
 

@@ -27,7 +27,7 @@ If that leaves no pages, say so and stop. Make no commit.
 
 ## 2. Check each page
 
-Start from what changed. For a page stamped `<!-- verified: <sha> -->`, `git diff <sha>..HEAD -- <changedRefs>` shows what moved under it. Then read the whole page and check every statement that the code can confirm or refute:
+Start from what changed. For a page stamped `<!-- verified: <sha> -->`, `git diff <sha>..HEAD -- <changedRefs>` shows what moved under it. If that commit no longer exists, because the branch that held it was rebased or squash-merged, use the commit that wrote the stamp instead: `git log -1 --format=%h -S<sha> -- <page>`. Then read the whole page and check every statement that the code can confirm or refute:
 
 - paths, and names of functions, types, tables, columns, routes, flags, config keys, environment variables and commands
 - numbers: timeouts, limits, counts, versions
@@ -50,7 +50,7 @@ In a sweep, reports go in the pull request's "Needs you" section. Otherwise, tel
 
 ## 4. Stamp the page
 
-End each page you checked in full with `<!-- verified: <sha> -->`, using `git rev-parse --short HEAD`, replacing any earlier stamp. Stamp pages that needed no changes too: the stamp is what stops the next run from checking them again.
+End each page you checked in full with `<!-- verified: <sha> -->`, replacing any earlier stamp. When you work on a branch that will be merged, `<sha>` is the commit you branched from (`git merge-base HEAD origin/<base>`, short form), not your own HEAD: your branch's commits may be rebased or squash-merged away, and a stamp that names one then points at nothing. When you work directly on the base branch, use `git rev-parse --short HEAD`. Stamp pages that needed no changes too: the stamp is what stops the next run from checking them again.
 
 Do not stamp a page you reported under the three cases above.
 
