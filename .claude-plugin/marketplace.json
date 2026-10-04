@@ -1,0 +1,14 @@
+{
+  "name": "kb-keeper",
+  "description": "The kb plugin: keeps a repo's documentation from going stale.",
+  "owner": {
+    "name": "Daniel Peregolise"
+  },
+  "plugins": [
+    {
+      "name": "kb",
+      "source": "./",
+      "description": "Keeps a repo's documentation from going stale: sweep, distill, verify."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "kb",
+  "version": "0.1.0",
+  "description": "Keeps a repo's documentation from going stale: a scheduled sweep distills finished docs into a small wiki, deletes what is obsolete, verifies the wiki against the code, and flags the rest in one pull request.",
+  "author": {
+    "name": "Daniel Peregolise"
+  },
+  "repository": "https://github.com/dperegolise/kb-keeper",
+  "keywords": ["documentation", "knowledge-base", "wiki", "stale-docs"]
+}

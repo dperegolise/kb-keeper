@@ -1,0 +1,38 @@
+# Weekly docs sweep. Opens one pull request listing what was distilled or deleted and what needs a decision.
+name: kb sweep
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: Limit the sweep to these paths (space-separated). Empty sweeps the whole repository.
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: kb-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # doc ages come from git history
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: https://github.com/dperegolise/kb-keeper.git
+          plugins: kb@kb-keeper
+          prompt: /kb:sweep ${{ inputs.paths }}
+          claude_args: --allowedTools "Read,Edit,Write,Glob,Grep,Skill,Bash(git:*),Bash(gh:*),Bash(node:*)"

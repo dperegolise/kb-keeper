@@ -1,0 +1,51 @@
+# On a pull request, check the wiki pages that cite the files it changes.
+# The inventory script decides whether there is anything to check, so most runs use no model at all.
+name: kb verify
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: kb-verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # Skip sweep pull requests and pushes made by the verifier itself.
+    if: ${{ !startsWith(github.head_ref, 'kb/') && github.actor != 'claude[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Find pages that cite changed files
+        id: pages
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git clone --quiet --depth 1 https://github.com/dperegolise/kb-keeper.git "$RUNNER_TEMP/kb-keeper"
+          pages=$(node "$RUNNER_TEMP/kb-keeper/scripts/inventory.mjs" --changed-since "origin/$BASE_REF" --paths-only | tr '\n' ' ')
+          echo "pages=$pages" >> "$GITHUB_OUTPUT"
+          echo "Pages to verify: ${pages:-none}"
+
+      - uses: anthropics/claude-code-action@v1
+        if: ${{ steps.pages.outputs.pages != '' }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: https://github.com/dperegolise/kb-keeper.git
+          plugins: kb@kb-keeper
+          prompt: |
+            Use the kb:verify skill with the arguments `--changed-since origin/${{ github.base_ref }}`.
+            Commit the corrections to this pull request's branch and push them.
+            If the skill tells you to report something instead of fixing it, post one comment on this pull request listing those items.
+          claude_args: --allowedTools "Read,Edit,Write,Glob,Grep,Skill,Bash(git:*),Bash(gh:*),Bash(node:*)"

@@ -1,0 +1,14 @@
+{
+  "name": "kb-keeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code plugin that keeps a repo's documentation from going stale",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "validate": "claude plugin validate . --strict"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
