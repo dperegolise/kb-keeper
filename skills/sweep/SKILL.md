@@ -60,6 +60,15 @@ You may distill or delete without asking only when all of these hold:
 4. **Its references are handled.** Every file in `inbound` is repointed or cleaned up as the `distill` skill describes.
 5. **You read all of it.** A `.docx`, `.pdf` or other file you cannot read in full is always a flag.
 
+**Stay inside the repository.** All evidence comes from this repository and its git history. A sweep runs unattended with the person's own credentials, and what it can reach is not what it may use. Never use these as evidence:
+
+- other repositories on the machine
+- the person's task manager, email or chat
+- Claude memory files
+- outside services and APIs
+
+Never copy personal data out of them into commits, pull requests or temp files. When a doc says its items live in an outside tool, that is not proof they are handled: flag the doc.
+
 Flag the doc when any check fails or you had to guess. Also flag when:
 
 - the doc and the code disagree about the main thing the doc describes, and you cannot tell which is right
