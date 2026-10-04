@@ -41,6 +41,7 @@ Expect a large reduction. A 500-line design doc for a feature that has shipped u
    - False now: drop it.
    - Describes something not built: it is open work. Move it to the backlog if that is still wanted, otherwise drop it and say so in the commit.
    - The doc states a rule and the code breaks it, and you cannot tell which one is right: stop on that claim. It may be a bug in the code. Report it instead of choosing a side.
+   - A code comment is not the code. When a comment and the doc disagree, check what the code actually does (configuration, exports, call sites) and go with that. Report the wrong one, the comment or the doc, as a stale line to fix.
 
 3. **Choose the page.** Read `index.md` first and prefer an existing page. Name a page for the thing it describes (`dialer-pacing.md`), never for the document or event it came from (`powerdialer-design.md`, `phase-1-handoff.md`). Start a new page only when no page covers the topic. Split a page that passes about 300 lines.
 

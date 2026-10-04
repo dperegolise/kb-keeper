@@ -16,8 +16,11 @@ A sweep usually runs unattended on a schedule. Do not stop to ask questions. Any
 
 1. Read `kb.json` at the repo root. If it is missing, stop and say that `/kb:setup` has to run first.
 2. Check for a sweep that is still waiting: `gh pr list --state open --search "head:kb/sweep-"`. If one is open, stop and report its link. Sweeps stacking up unread means the review queue is not being read, and adding to it makes that worse.
-3. `git fetch`, then create `kb/sweep-<YYYY-MM-DD>` from `origin/<base>`, where `<base>` is `base` in `kb.json` or else the default branch. If the working tree has uncommitted changes, work in a temporary `git worktree` so that you never touch someone's work in progress.
-4. Take the inventory and keep the JSON where you can re-read it:
+3. `git fetch`, then create the branch `kb/sweep-<YYYY-MM-DD>` from `origin/<base>`, where `<base>` is `base` in `kb.json` or else the default branch. If that name is already taken locally or on the remote, add `-2`, `-3` and so on.
+   - If the working tree is clean, create the branch right here, in the current checkout. Note the branch you started on so you can switch back at the end.
+   - If it has uncommitted changes, never touch them. Create a `git worktree` next to the repository (`../<repo>-kb-sweep-<date>`), not in a temp directory, so the person can find it afterwards.
+4. Make sure the repository's commit hooks can run before your first commit. A fresh worktree usually has no installed dependencies, and a hook that runs a formatter or linter then fails. If the repository has a lockfile but its dependencies are not installed in this checkout, install them with its package manager (for example `pnpm install --frozen-lockfile`). Never bypass a hook. Run the formatter it uses on the files you wrote before committing them. If a hook fails on a file you did not write, flag it.
+5. Take the inventory and keep the JSON where you can re-read it:
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/inventory.mjs" --summary
@@ -53,7 +56,7 @@ You may distill or delete without asking only when all of these hold:
 
 1. **The exit condition has happened and you can point to the proof.** `expired: true` is proof for rules based on age or count. Otherwise the proof is in the repository: the commit that fixed the bug, the code that implements the design, the newer doc that replaces this one. A "STATUS: done" line inside the doc is a lead to check, not proof.
 2. **Nothing lasting is lost.** Every claim that is still true, that the code cannot tell a reader, and that someone will need again is already in the wiki or goes there in this same commit.
-3. **Nothing open is lost.** Unanswered questions, unfixed findings and unbuilt parts move to the backlog named in `kb.json`. If no backlog is configured, flag the doc.
+3. **Nothing open is lost.** Unanswered questions, unfixed findings and unbuilt parts move to the backlog named in `kb.json`. If no backlog is configured, flag the doc. The pull request is not storage: once it is merged nobody reads it again. When an open item is a question only a person can answer, such as a warning about money, accounts or a customer, put it in the backlog as a `Decide:` entry, or keep the doc and flag it. Never let the pull request hold the only copy.
 4. **Its references are handled.** Every file in `inbound` is repointed or cleaned up as the `distill` skill describes.
 5. **You read all of it.** A `.docx`, `.pdf` or other file you cannot read in full is always a flag.
 
@@ -67,6 +70,15 @@ A disagreement on one point does not hold up the rest of a doc. Distill the rest
 
 For each doc you distill, follow the `kb:distill` skill. Load it before the first one.
 
+## The backlog
+
+Open work from distilled docs goes to the backlog, and nothing else removes it, so keep it from only growing:
+
+- Before adding an entry, search the backlog for one about the same thing. Update that entry instead of adding a second.
+- Keep an entry short: a heading and a few lines that say what is wrong and which files it touches. Its source doc is in git history; do not copy its story.
+- Before adding, check that the problem still exists in the code. If it is already fixed, cite the fix in the commit and add nothing.
+- After the docs, check up to 10 existing entries that cite files in the sweep's scope or that name code changed since the backlog was last edited. Remove each one whose fix you can point to, in one `kb: prune backlog` commit that lists every entry it removes and its proof.
+
 ## 4. Order and budget
 
 Work from the cheapest decisions to the most expensive:
@@ -74,7 +86,8 @@ Work from the cheapest decisions to the most expensive:
 1. expired ephemeral docs
 2. other ephemeral docs whose exit condition has happened
 3. living docs that need verifying, following the `kb:verify` skill
-4. unclassified docs
+4. backlog entries, as described under "The backlog"
+5. unclassified docs
 
 Stop at about 40 source docs for one pull request, unless the person who started the sweep gave another limit. A pull request too large to review gets merged unread or not at all. List what you did not reach under "Carried over"; the next sweep picks it up.
 
@@ -117,3 +130,5 @@ Each doc is its own commit. `git revert <sha>` restores one. After a squash merg
 ```
 
 Do not merge the pull request. If you cannot push or `gh` is unavailable, leave the branch in place and report its name along with the body you would have posted.
+
+If you created the branch in the person's own checkout and started on a branch, switch back to it. If you started on a detached HEAD, stay on the sweep branch. Leave a worktree you created in place, and report its path.

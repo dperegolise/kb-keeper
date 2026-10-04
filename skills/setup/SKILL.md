@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 kb keeps documentation from going stale by giving every doc a lifecycle class and sweeping on a schedule. Setup decides the classes for this repository and installs the schedule. It does not clean anything up; the sweeps do that afterwards.
 
-Do the work on a branch named `kb/setup` and finish with a pull request.
+Do the work on a branch named `kb/setup` (add `-2`, `-3` and so on if that name is taken locally or on the remote) and finish with a pull request. Before committing, make sure the repository's commit hooks can run: if it has a lockfile but no installed dependencies in this checkout, install them. Never bypass a hook.
 
 ## 1. Survey
 
@@ -36,7 +36,7 @@ Existing docs that must stay true where they are (`README.md`, `CLAUDE.md`, a ru
 
 Show the person the proposed classification as a table of pattern, class, exit condition, doc count and line count. Ask about the groups you were unsure of before writing anything. A wrong class is the one setup mistake that costs something later: `ephemeral` on a doc that should be a record gets it deleted.
 
-Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one, and `backlog` to wherever this project tracks open work. Run the summary again and confirm that nothing important is left unclassified.
+Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one. Set `backlog` to a Markdown file in the repository where this project keeps open work. A sweep can only write to files, so if the project tracks work in an outside tool (Jira, Linear, a sprint board), create `docs/BACKLOG.md` as an inbox that a person empties into that tool, and say so in the pull request. Run the summary again and confirm that nothing important is left unclassified.
 
 ## 3. Create the wiki
 

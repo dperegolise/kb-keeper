@@ -23,7 +23,7 @@
 |---|---|---|
 | `wiki` | `docs/wiki` | Folder that holds the wiki. Everything in it is `living` without needing a rule |
 | `base` | the default branch | Branch that sweeps start from and open pull requests against |
-| `backlog` | none | Where open work goes when a doc is distilled: a file path, or a phrase such as `GitHub issues`. Without it, docs that contain open work are flagged |
+| `backlog` | none | Markdown file in the repository where open work goes when a doc is distilled. Sweeps also prune entries whose fix is in the code. Without it, docs that contain open work are flagged |
 | `docs` | `**/*.md`, `**/*.mdx`, `**/*.docx`, `**/*.pdf` | Globs for what counts as a document. Replaces the default |
 | `ignore` | `**/node_modules/**`, `.claude/**`, `.github/**`, `**/CHANGELOG*`, `**/LICENSE*` | Globs for documents kb should never look at. Adds to the default |
 | `rules` | none | Ordered list. The first rule whose `match` fits a path decides its class |
