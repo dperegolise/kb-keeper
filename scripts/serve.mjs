@@ -6,13 +6,16 @@
 //   node serve.mjs stop
 //
 // A page opened from disk cannot write files, so the page posts each reply here and this writes
-// it to `replies.json` in kb's local folder. Every request needs the token written to
-// `server.json` (and baked into the page), so no other site open in the browser can post to it.
-// It stops itself after IDLE_HOURS without a request.
+// it to `replies.json` in kb's local folder. Security rests on two checks:
+// - every reply needs the token in `server.json`, which is baked into the page and readable only
+//   from disk, so no other site can post one (any origin is fine: IDE previews send their own);
+// - the Host header must be 127.0.0.1 or localhost, so a site that points its own domain at this
+//   machine (DNS rebinding) cannot load the page and read the token.
+// Refused requests are written to `server.log` next to it. It stops after IDLE_HOURS idle.
 
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,9 +47,13 @@ export function running(cwd = process.cwd()) {
 
 const url = (info) => `http://127.0.0.1:${info.port}/`;
 
-// Pages opened from disk send `Origin: null`; pages served here send this listener's own origin.
-function allowedOrigin(origin, port) {
-  return !origin || origin === 'null' || origin === `http://127.0.0.1:${port}` || origin === `http://localhost:${port}`;
+const localHost = (host, port) => host === `127.0.0.1:${port}` || host === `localhost:${port}`;
+
+function refuse(cwd, req, res, status, reason, headers = {}) {
+  try {
+    appendFileSync(path.join(kbDir(cwd), 'server.log'), `${new Date().toISOString()} ${status} ${req.method} ${req.url} origin=${req.headers.origin ?? '-'} host=${req.headers.host ?? '-'}: ${reason}\n`);
+  } catch {}
+  res.writeHead(status, { ...headers, 'Content-Type': 'application/json' }).end(JSON.stringify({ error: reason }));
 }
 
 function run(cwd) {
@@ -60,17 +67,15 @@ function run(cwd) {
     touch();
     const origin = req.headers.origin;
     const port = server.address().port;
-    if (!allowedOrigin(origin, port)) {
-      res.writeHead(403).end();
-      return;
-    }
+    if (!localHost(req.headers.host, port)) return refuse(cwd, req, res, 403, 'host is not 127.0.0.1 or localhost');
+    // Cross-origin access is granted only to the token-checked reply endpoint, never to the page.
     const cors = origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
     if (req.method === 'OPTIONS') {
       res.writeHead(204, { ...cors, 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type, X-KB-Token', 'Access-Control-Max-Age': '600' }).end();
       return;
     }
     if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY' });
       res.end(renderHtml(cwd, { live: true }));
       return;
     }
@@ -79,10 +84,7 @@ function run(cwd) {
       return;
     }
     if (req.method === 'POST' && req.url === '/reply') {
-      if (req.headers['x-kb-token'] !== token) {
-        res.writeHead(403, cors).end();
-        return;
-      }
+      if (req.headers['x-kb-token'] !== token) return refuse(cwd, req, res, 403, 'missing or wrong token (reload the page)', cors);
       let body = '';
       req.on('data', (c) => {
         body += c;
@@ -92,20 +94,17 @@ function run(cwd) {
         try {
           const { id, text } = JSON.parse(body);
           const r = reply(cwd, String(id), String(text ?? ''));
-          if (!r) {
-            res.writeHead(404, { ...cors, 'Content-Type': 'application/json' }).end('{"error":"no open item"}');
-            return;
-          }
+          if (!r) return refuse(cwd, req, res, 404, 'no open item with that id (already answered?)', cors);
           append({ skill: 'review', action: 'reply', target: r.item.doc, where: 'repo', why: r.text || '(reply withdrawn)', evidence: r.item.id }, cwd);
           await afterWrite();
           res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }).end(JSON.stringify({ ok: true, id: r.item.id, text: r.text }));
         } catch {
-          res.writeHead(400, cors).end();
+          refuse(cwd, req, res, 400, 'bad request body', cors);
         }
       });
       return;
     }
-    res.writeHead(404, cors).end();
+    refuse(cwd, req, res, 404, 'unknown path', cors);
   });
   server.listen(0, '127.0.0.1', async () => {
     writeFileSync(serverPath(cwd), JSON.stringify({ port: server.address().port, token, pid: process.pid, started: new Date().toISOString() }, null, 2) + '\n', { mode: 0o600 });

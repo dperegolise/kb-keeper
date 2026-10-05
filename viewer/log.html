@@ -439,7 +439,13 @@
       headers: { 'Content-Type': 'application/json', 'X-KB-Token': listener.token },
       body: JSON.stringify({ id, text }),
     });
-    if (!res.ok) throw new Error('refused: ' + res.status);
+    if (!res.ok) {
+      let reason = 'refused (' + res.status + ')';
+      try { reason = (await res.json()).error || reason; } catch {}
+      const err = new Error(reason);
+      err.refused = true;
+      throw err;
+    }
   }
 
   function wireReplies() {
@@ -475,10 +481,13 @@
           savePending();
           state.className = 'state ok';
           state.textContent = text ? 'Saved. /kb:review will act on it.' : 'Reply withdrawn.';
-        } catch {
+        } catch (err) {
           pending[id] = text;
           savePending();
-          state.textContent = text ? 'Kept in this browser: kb is not listening. Run /kb:log, or use Copy replies.' : '';
+          const why = !listener ? 'kb is not listening. Run /kb:log'
+            : err.refused ? `kb refused it: ${err.message}`
+            : `this viewer could not reach kb at 127.0.0.1:${listener.port} (${err.message}). Try a browser, or run /kb:log`;
+          state.textContent = text ? `Kept in this browser: ${why}, or use Copy replies.` : '';
         }
         card.classList.toggle('replied', !!text);
         recount();

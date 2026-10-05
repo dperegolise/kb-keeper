@@ -34,10 +34,26 @@ test('a reply without the token is refused', async () => {
   assert.equal((await post({ id, text: 'x' })).status, 403);
 });
 
-test('another website cannot post, even with the token', async () => {
-  const res = await post({ id, text: 'x' }, { 'X-KB-Token': info.token, Origin: 'https://evil.example' });
-  assert.equal(res.status, 403);
+test('a request for another host name is refused, and refusals are logged with the reason', async () => {
+  const { request } = await import('node:http');
+  const status = await new Promise((resolve) => {
+    const req = request({ host: '127.0.0.1', port: info.port, path: '/', headers: { Host: 'attacker.example' } }, (res) => resolve(res.statusCode));
+    req.end();
+  });
+  assert.equal(status, 403);
   assert.ok(!existsSync(kb('replies.json')));
+  assert.match(readFileSync(kb('server.log'), 'utf8'), /403 GET \/ .*host=attacker\.example: host is not 127\.0\.0\.1/);
+});
+
+test('another origin never gets to read the page, so it cannot learn the token', async () => {
+  const res = await fetch(`http://127.0.0.1:${info.port}/`, { headers: { Origin: 'https://evil.example' } });
+  assert.equal(res.headers.get('access-control-allow-origin'), null);
+});
+
+test('an IDE preview with its own origin can post a reply with the token', async () => {
+  const res = await post({ id, text: 'from the preview' }, { 'X-KB-Token': info.token, Origin: 'vscode-webview://abc123' });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('access-control-allow-origin'), 'vscode-webview://abc123');
 });
 
 test('a page opened from disk saves a reply, which is logged and baked into the page', async () => {
