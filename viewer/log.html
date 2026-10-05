@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kb activity</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f3f2ee;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --ring: rgba(11, 11, 11, 0.10);
+    --wash: rgba(11, 11, 11, 0.04);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+    --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 4px 16px rgba(11, 11, 11, 0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #222220;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+      --ring: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #222220;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; }
+  @media (max-width: 640px) { .wrap { padding: 20px 16px 48px; } }
+
+  header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  h1 { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; margin: 0; }
+  .sub { color: var(--ink-2); margin-top: 4px; font-size: 13px; }
+  .sub code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink-2); }
+  .theme { border: 1px solid var(--ring); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .theme:hover { background: var(--surface-2); }
+
+  .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; box-shadow: var(--shadow); }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 860px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles .tile:first-child { grid-column: span 2; } }
+  .tile { padding: 16px; }
+  .tile .label { color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .tile .value { font-size: 28px; font-weight: 600; margin-top: 6px; letter-spacing: -0.01em; }
+  .tile .note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .key { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex: none; }
+
+  .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 24px; }
+  @media (max-width: 860px) { .charts { grid-template-columns: 1fr; } }
+  .chart { padding: 16px 16px 12px; min-width: 0; }
+  .chart h2, .section h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .chart .desc { color: var(--muted); font-size: 12px; margin: 2px 0 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 10px; color: var(--ink-2); font-size: 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  svg { display: block; overflow: visible; }
+  .chart svg { width: 100%; }
+  svg text { fill: var(--muted); font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  svg .hit { fill: transparent; cursor: default; }
+  .chart h3 { font-size: 12px; font-weight: 600; color: var(--ink-2); margin: 18px 0 8px; }
+  .empty-chart { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
+
+  .section { margin-top: 8px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--ring); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 6px 10px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--ring); }
+  .seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+  .search { flex: 1 1 220px; min-width: 0; border: 1px solid var(--ring); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  .search::placeholder { color: var(--muted); }
+  .count { color: var(--muted); font-size: 12px; margin-left: auto; }
+
+  details.group { margin-bottom: 10px; overflow: hidden; }
+  details.group > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center; }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary:hover { background: var(--wash); }
+  .g-title { font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .g-title .chev { color: var(--muted); transition: transform 0.15s; flex: none; }
+  details[open] .g-title .chev { transform: rotate(90deg); }
+  .g-title .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-meta { color: var(--muted); font-size: 12px; grid-column: 1; padding-left: 20px; }
+  .g-bar { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 2px; width: 160px; height: 8px; }
+  .g-bar i { display: block; height: 100%; border-radius: 2px; }
+  @media (max-width: 640px) { .g-bar { width: 72px; } }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 16px; border-top: 1px solid var(--grid); font-size: 13px; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--surface-2); }
+  td.time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; width: 116px; }
+  td.act { width: 128px; }
+  td.target { word-break: break-word; }
+  td.target code, td .ev { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  td.why { color: var(--ink-2); }
+  td .ev { color: var(--muted); display: block; margin-top: 3px; word-break: break-word; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); white-space: nowrap; }
+  .where { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); font-size: 11px; vertical-align: 1px; }
+  th.c-time { width: 116px; } th.c-act { width: 128px; } th.c-target { width: 30%; }
+  @media (max-width: 640px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: auto; }
+    tr { border-top: 1px solid var(--grid); padding: 8px 0; }
+    td { border: 0; padding: 2px 16px; }
+    td.time, td.act { display: inline-block; width: auto; }
+  }
+
+  .tip { position: fixed; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring); border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12); padding: 8px 10px; font-size: 12px; min-width: 140px; opacity: 0; transition: opacity 0.08s; z-index: 10; }
+  .tip .t-h { font-weight: 600; margin-bottom: 4px; }
+  .tip .t-r { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .tip .t-r b { margin-left: auto; color: var(--ink); font-weight: 600; padding-left: 12px; font-variant-numeric: tabular-nums; }
+  .nolog { padding: 48px 24px; text-align: center; color: var(--ink-2); }
+  .nolog code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>kb activity</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <button class="theme" id="theme" type="button">Theme: auto</button>
+  </header>
+  <main id="app"></main>
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script id="kb-data" type="application/json">__KB_DATA__</script>
+<script>
+(() => {
+  // Each action falls into one category; the category order is the categorical slot order.
+  const CATS = [
+    { id: 'retired', label: 'Retired', note: 'deleted or distilled', color: 'var(--s1)', actions: ['delete', 'distill'] },
+    { id: 'flagged', label: 'Flagged', note: 'left for a person', color: 'var(--s2)', actions: ['flag'] },
+    { id: 'backlog', label: 'Backlog', note: 'entries added or pruned', color: 'var(--s3)', actions: ['backlog-add', 'backlog-prune'] },
+    { id: 'verified', label: 'Verified', note: 'living docs checked', color: 'var(--s4)', actions: ['verify'] },
+    { id: 'outside', label: 'Outside edits', note: 'changes outside the repo', color: 'var(--s5)', actions: ['update'] },
+    { id: 'config', label: 'Config', note: 'kb settings changed', color: 'var(--s6)', actions: ['config'] },
+  ];
+  const LIFECYCLE = new Set(['start', 'finish']);
+  const catOf = (e) => {
+    if (e.where && e.where !== 'repo' && e.action !== 'start' && e.action !== 'finish') return CATS[4];
+    return CATS.find((c) => c.actions.includes(e.action)) || null;
+  };
+
+  const payload = JSON.parse(document.getElementById('kb-data').textContent || '{}');
+
+  function parse(text) {
+    return String(text || '')
+      .split('\n')
+      .filter((l) => l.trim() && !l.startsWith('#'))
+      .map((l, i) => {
+        const [time, skill, action, target, where, branch, why, evidence] = l.split(' | ');
+        return { i, time, skill, action, target, where: where || 'repo', branch: branch || '', why: why || '', evidence: evidence || '' };
+      })
+      .filter((e) => e.time && e.action);
+  }
+
+  // Served over http (an IDE preview server, for example), read the live log next to this page.
+  async function load() {
+    if (/^https?:/.test(location.protocol)) {
+      try {
+        const res = await fetch('log', { cache: 'no-store' });
+        if (res.ok) return { ...payload, log: await res.text(), live: true };
+      } catch {}
+    }
+    return payload;
+  }
+
+  const fmtTime = (t) => {
+    const d = new Date(t);
+    if (isNaN(d)) return t;
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+  const dayKey = (t) => {
+    const d = new Date(t);
+    return isNaN(d) ? 'unknown' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const dayLabel = (k) => {
+    const d = new Date(k + 'T12:00:00');
+    return isNaN(d) ? k : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const compact = (n) => (n >= 10000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : n.toLocaleString());
+
+  // Theme toggle: auto → light → dark, remembered per viewer when storage is available.
+  const themeBtn = document.getElementById('theme');
+  const themes = ['auto', 'light', 'dark'];
+  let theme = 'auto';
+  try { theme = localStorage.getItem('kb-theme') || 'auto'; } catch {}
+  const applyTheme = () => {
+    if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    themeBtn.textContent = 'Theme: ' + theme;
+  };
+  themeBtn.addEventListener('click', () => {
+    theme = themes[(themes.indexOf(theme) + 1) % themes.length];
+    try { localStorage.setItem('kb-theme', theme); } catch {}
+    applyTheme();
+  });
+  applyTheme();
+
+  // Tooltip shared by both charts.
+  const tip = document.getElementById('tip');
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.style.opacity = 1;
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = evt.clientX + pad, y = evt.clientY + pad;
+    if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+    if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+    tip.style.left = Math.max(8, x) + 'px';
+    tip.style.top = Math.max(8, y) + 'px';
+  }
+  const hideTip = () => { tip.style.opacity = 0; };
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (name, attrs = {}) => {
+    const n = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+  // A bar with a 4px rounded data end and a square baseline end.
+  function barPath(x, y, w, h, roundTop) {
+    if (h <= 0) return '';
+    const r = Math.min(4, w / 2, h);
+    if (!roundTop) return `M${x},${y}h${w}v${h}h${-w}z`;
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}z`;
+  }
+  function hBarPath(x, y, w, h) {
+    if (w <= 0) return '';
+    const r = Math.min(4, h / 2, w);
+    return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}z`;
+  }
+  // Whole-number ticks: a step of 1, 2 or 5 times a power of ten, about four of them.
+  function niceTicks(v) {
+    const raw = Math.max(1, v / 4);
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 5, 10].map((m) => m * p).find((x) => x >= raw);
+    const max = Math.max(step, Math.ceil(v / step) * step);
+    return { max, step };
+  }
+
+  // Hourly buckets while all activity fits in three days, daily after that. Empty buckets stay in, so
+  // the gaps between runs read as gaps.
+  function buckets(entries) {
+    const times = entries.map((e) => new Date(e.time).getTime()).filter((t) => !isNaN(t));
+    const lo = Math.min(...times), hi = Math.max(...times);
+    const HOUR = 3600e3, DAY = 24 * HOUR;
+    const hourly = hi - lo < 3 * DAY;
+    const floor = (t) => { const d = new Date(t); hourly ? d.setMinutes(0, 0, 0) : d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const keys = [];
+    for (let t = floor(lo); t <= hi; t += hourly ? HOUR : DAY) keys.push(floor(t));
+    const label = (t) => new Date(t).toLocaleString(undefined, hourly ? { hour: 'numeric' } : { month: 'short', day: 'numeric' });
+    const long = (t) => new Date(t).toLocaleString(undefined, hourly ? { month: 'short', day: 'numeric', hour: 'numeric' } : { weekday: 'short', month: 'short', day: 'numeric' });
+    return { hourly, keys, floor, label, long };
+  }
+
+  function activityChart(host, entries, setDesc) {
+    if (!entries.length) { host.innerHTML = '<div class="empty-chart">No actions yet</div>'; return; }
+    const used = CATS.filter((c) => entries.some((e) => catOf(e) === c));
+    const b = buckets(entries);
+    setDesc(`Logged actions per ${b.hourly ? 'hour' : 'day'}, by kind`);
+    const byDay = b.keys.map((k) => {
+      const row = { k, total: 0 };
+      for (const c of used) row[c.id] = 0;
+      return row;
+    });
+    const index = new Map(b.keys.map((k, i) => [k, i]));
+    for (const e of entries) {
+      const c = catOf(e), i = index.get(b.floor(new Date(e.time).getTime()));
+      if (c && i !== undefined) { byDay[i][c.id]++; byDay[i].total++; }
+    }
+
+    host.innerHTML = '';
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = used.map((c) => `<span><i class="key" style="background:${c.color}"></i>${esc(c.label)}</span>`).join('');
+    if (used.length > 1) host.appendChild(legend);
+
+    const W = Math.max(host.clientWidth, 280), H = 220, m = { t: 8, r: 8, b: 26, l: 32 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const { max, step } = niceTicks(Math.max(...byDay.map((r) => r.total)));
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': 'Actions over time by kind' });
+    for (let v = 0; v <= max; v += step) {
+      const y = m.t + ih - (v / max) * ih;
+      svg.appendChild(el('line', { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: v === 0 ? 'var(--axis)' : 'var(--grid)', 'stroke-width': 1 }));
+      const t = el('text', { x: m.l - 6, y: y + 4, 'text-anchor': 'end' });
+      t.textContent = Math.round(v).toLocaleString();
+      svg.appendChild(t);
+    }
+    const band = iw / byDay.length, bw = Math.min(24, band * 0.6);
+    const labelEvery = Math.ceil(byDay.length / Math.max(1, Math.floor(iw / 56)));
+    byDay.forEach((row, i) => {
+      const cx = m.l + band * i + band / 2, x = cx - bw / 2;
+      const g = el('g', { class: 'col' });
+      let y = m.t + ih;
+      const segs = used.filter((c) => row[c.id] > 0);
+      segs.forEach((c, j) => {
+        const h = (row[c.id] / max) * ih;
+        const top = j === segs.length - 1;
+        const gap = j > 0 ? 2 : 0;
+        g.appendChild(el('path', { d: barPath(x, y - h + gap, bw, Math.max(0, h - gap), top), fill: c.color }));
+        y -= h;
+      });
+      svg.appendChild(g);
+      if (i % labelEvery === 0) {
+        const t = el('text', { x: cx, y: H - 8, 'text-anchor': 'middle' });
+        t.textContent = b.label(row.k);
+        svg.appendChild(t);
+      }
+      const hit = el('rect', { class: 'hit', x: m.l + band * i, y: m.t, width: band, height: ih });
+      hit.addEventListener('mousemove', (evt) => showTip(evt,
+        `<div class="t-h">${esc(b.long(row.k))} · ${row.total} action${row.total === 1 ? '' : 's'}</div>` +
+        used.filter((c) => row[c.id]).map((c) => `<div class="t-r"><i class="key" style="background:${c.color}"></i>${esc(c.label)}<b>${row[c.id]}</b></div>`).join('')));
+      hit.addEventListener('mouseleave', hideTip);
+      svg.appendChild(hit);
+    });
+    host.appendChild(svg);
+  }
+
+  function countBy(entries, key) {
+    const counts = new Map();
+    for (const e of entries) if (!LIFECYCLE.has(e.action)) counts.set(key(e), (counts.get(key(e)) || 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }
+
+  function sideChart(host, entries) {
+    host.innerHTML = '';
+    if (!entries.length) { host.innerHTML = '<div class="empty-chart">No actions yet</div>'; return; }
+    barList(host, countBy(entries, (e) => (e.where === 'repo' ? 'This repository' : e.where)), (k) => (k === 'This repository' ? 'var(--s1)' : 'var(--s5)'));
+    const h = document.createElement('h3');
+    h.textContent = 'By skill';
+    host.appendChild(h);
+    barList(host, countBy(entries, (e) => '/kb:' + e.skill), () => 'var(--s1)');
+  }
+
+  function barList(host, rows, color) {
+    const W = Math.max(host.clientWidth, 240), rowH = 32, m = { l: 0, r: 40 };
+    const H = rows.length * rowH;
+    const max = Math.max(...rows.map((r) => r[1]));
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': 'Action counts' });
+    rows.forEach(([where, n], i) => {
+      const y = i * rowH;
+      const t = el('text', { x: 0, y: y + 11 });
+      t.style.fill = 'var(--ink-2)';
+      t.textContent = where;
+      svg.appendChild(t);
+      const bw = Math.max(2, ((W - m.r) * n) / max);
+      svg.appendChild(el('path', { d: hBarPath(0, y + 16, bw, 8), fill: color(where) }));
+      const v = el('text', { x: bw + 6, y: y + 24 });
+      v.style.fill = 'var(--ink)';
+      v.textContent = n.toLocaleString();
+      svg.appendChild(v);
+      const hit = el('rect', { class: 'hit', x: 0, y, width: W, height: rowH });
+      hit.addEventListener('mousemove', (evt) => showTip(evt, `<div class="t-h">${esc(where)}</div><div class="t-r">Actions<b>${n}</b></div>`));
+      hit.addEventListener('mouseleave', hideTip);
+      svg.appendChild(hit);
+    });
+    host.appendChild(svg);
+  }
+
+  const GROUPS = {
+    run: { label: 'Run', key: (e) => e.branch || '(no branch)' },
+    action: { label: 'Action', key: (e) => (catOf(e) || { label: 'Run start and finish' }).label },
+    where: { label: 'Where', key: (e) => (e.where === 'repo' ? 'This repository' : e.where) },
+    day: { label: 'Day', key: (e) => dayKey(e.time) },
+  };
+
+  function render(data) {
+    const app = document.getElementById('app');
+    const entries = parse(data.log);
+    const sub = document.getElementById('sub');
+    sub.innerHTML = `${esc(data.repo || 'repository')} · ${entries.length.toLocaleString()} entr${entries.length === 1 ? 'y' : 'ies'}` +
+      (data.live ? ' · live' : data.generated ? ` · updated ${esc(fmtTime(data.generated))}` : '');
+    document.getElementById('foot').innerHTML = data.path ? `Log: <code>${esc(data.path)}</code>` : '';
+
+    if (!entries.length) {
+      app.innerHTML = `<div class="card nolog">No kb activity yet. Each sweep, distill and verify adds lines to the log, and this page fills in as they do.</div>`;
+      return;
+    }
+
+    const acts = entries.filter((e) => !LIFECYCLE.has(e.action));
+    const n = (id) => acts.filter((e) => catOf(e) && catOf(e).id === id).length;
+    const runs = new Set(entries.filter((e) => e.action === 'start').map((e) => e.branch + e.time)).size;
+    const tiles = [
+      { label: 'Actions', value: acts.length, note: `${runs} run${runs === 1 ? '' : 's'}` },
+      { label: 'Retired', value: n('retired'), note: 'docs deleted or distilled', color: 'var(--s1)' },
+      { label: 'Flagged', value: n('flagged'), note: 'left for a person', color: 'var(--s2)' },
+      { label: 'Backlog', value: n('backlog'), note: 'entries added or pruned', color: 'var(--s3)' },
+      { label: 'Outside edits', value: n('outside'), note: 'changes outside the repo', color: 'var(--s5)' },
+    ];
+
+    app.innerHTML = `
+      <section class="tiles">${tiles.map((t) => `
+        <div class="card tile">
+          <div class="label">${t.color ? `<i class="key" style="background:${t.color}"></i>` : ''}${esc(t.label)}</div>
+          <div class="value">${compact(t.value)}</div>
+          <div class="note">${esc(t.note)}</div>
+        </div>`).join('')}
+      </section>
+      <section class="charts">
+        <div class="card chart"><h2>Actions over time</h2><div class="desc" id="d-activity"></div><div id="c-activity"></div></div>
+        <div class="card chart"><h2>Where it happened</h2><div class="desc">The repository, or an outside source</div><div id="c-where"></div></div>
+      </section>
+      <section class="section">
+        <h2>Log</h2>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Group by">${Object.entries(GROUPS).map(([k, g]) => `<button type="button" data-g="${k}">${g.label}</button>`).join('')}</div>
+          <input class="search" id="q" type="search" placeholder="Filter by doc, reason, commit…" aria-label="Filter entries">
+          <span class="count" id="count"></span>
+        </div>
+        <div id="groups"></div>
+      </section>`;
+
+    const draw = () => {
+      activityChart(document.getElementById('c-activity'), acts, (t) => { document.getElementById('d-activity').textContent = t; });
+      sideChart(document.getElementById('c-where'), acts);
+    };
+    draw();
+    let resizeTimer;
+    addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(draw, 120); });
+
+    let group = 'run';
+    try { group = localStorage.getItem('kb-group') || 'run'; } catch {}
+    if (!GROUPS[group]) group = 'run';
+    const q = document.getElementById('q');
+    const open = new Set();
+
+    function drawGroups() {
+      document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === group)));
+      const needle = q.value.trim().toLowerCase();
+      const shown = entries.filter((e) => !needle || [e.target, e.why, e.evidence, e.action, e.where, e.branch, e.skill].join(' ').toLowerCase().includes(needle));
+      document.getElementById('count').textContent = `${shown.length.toLocaleString()} of ${entries.length.toLocaleString()}`;
+      const map = new Map();
+      for (const e of shown) {
+        const k = GROUPS[group].key(e);
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(e);
+      }
+      // Newest group first; entries inside a group in the order they happened.
+      const list = [...map.entries()].sort((a, b) => {
+        const la = a[1][a[1].length - 1].time, lb = b[1][b[1].length - 1].time;
+        return lb.localeCompare(la);
+      });
+      const host = document.getElementById('groups');
+      if (!list.length) { host.innerHTML = '<div class="card nolog">Nothing matches that filter.</div>'; return; }
+      host.innerHTML = list.map(([k, items], gi) => {
+        const counted = items.filter((e) => catOf(e) && !LIFECYCLE.has(e.action));
+        const mix = CATS.map((c) => ({ c, n: counted.filter((e) => catOf(e) === c).length })).filter((x) => x.n);
+        const total = counted.length || 1;
+        const first = items[0].time, last = items[items.length - 1].time;
+        const name = group === 'day' ? dayLabel(k) : k;
+        const finish = items.find((e) => e.action === 'finish');
+        const isOpen = open.has(k) || (open.size === 0 && gi === 0);
+        return `
+          <details class="card group" data-k="${esc(k)}"${isOpen ? ' open' : ''}>
+            <summary>
+              <div class="g-title"><svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="name">${esc(name)}</span></div>
+              <div class="g-meta">${items.length} entr${items.length === 1 ? 'y' : 'ies'} · ${esc(fmtTime(first))}${first !== last ? ' – ' + esc(fmtTime(last)) : ''}${finish && /^https?:/.test(finish.target) ? ` · <a href="${esc(finish.target)}" target="_blank" rel="noopener">pull request</a>` : ''}</div>
+              <div class="g-bar" title="${mix.map((x) => `${x.c.label}: ${x.n}`).join(', ')}">${mix.map((x) => `<i style="flex:${x.n / total};background:${x.c.color}"></i>`).join('')}</div>
+            </summary>
+            <table>
+              <thead><tr><th class="c-time">Time</th><th class="c-act">Action</th><th class="c-target">Target</th><th>Why</th></tr></thead>
+              <tbody>${items.map((e) => {
+                const c = catOf(e);
+                return `<tr>
+                  <td class="time">${esc(fmtTime(e.time))}</td>
+                  <td class="act"><span class="pill"><i class="key" style="background:${c ? c.color : 'var(--axis)'}"></i>${esc(e.action)}</span></td>
+                  <td class="target"><code>${esc(e.target)}</code>${e.where !== 'repo' ? `<span class="where">${esc(e.where)}</span>` : ''}</td>
+                  <td class="why">${esc(e.why)}${e.evidence ? `<span class="ev">${esc(e.evidence)}</span>` : ''}${group !== 'run' && e.branch ? `<span class="ev">${esc(e.skill)} · ${esc(e.branch)}</span>` : ''}</td>
+                </tr>`;
+              }).join('')}</tbody>
+            </table>
+          </details>`;
+      }).join('');
+      host.querySelectorAll('details').forEach((d) => d.addEventListener('toggle', () => {
+        if (d.open) open.add(d.dataset.k); else open.delete(d.dataset.k);
+      }));
+    }
+
+    document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+      group = b.dataset.g;
+      open.clear();
+      try { localStorage.setItem('kb-group', group); } catch {}
+      drawGroups();
+    }));
+    q.addEventListener('input', drawGroups);
+    drawGroups();
+  }
+
+  load().then(render);
+})();
+</script>
+</body>
+</html>

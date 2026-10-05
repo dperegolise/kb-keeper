@@ -4,10 +4,11 @@
 //   node log.mjs <skill> <action> <target> --why "<reason>" [--evidence "<proof>"] [--where <source>]
 //   node log.mjs --init         create the log if it is missing and print its path
 //   node log.mjs --path         print the log's path
-//   node log.mjs --dir          print kb's local folder (log, sources.json, tmp/)
+//   node log.mjs --dir          print kb's local folder (log, log.html, sources.json, tmp/)
 //
 // kb's local state lives in `kb/` inside the repository's common git dir: git never tracks it, and
-// every worktree of the repository shares it. The log is `kb/log` there.
+// every worktree of the repository shares it. The log is `kb/log` there, and each write rebuilds
+// the activity page `kb/log.html` (view.mjs).
 // Each line: time | skill | action | target | where | branch | why | evidence
 
 import { execFileSync } from 'node:child_process';
@@ -68,13 +69,22 @@ function parseArgs(argv) {
   return out;
 }
 
-function main() {
+// Rebuild the activity page after a write. A page that fails to build never fails the log entry.
+async function refreshPage() {
+  try {
+    const { render } = await import('./view.mjs');
+    render();
+  } catch {}
+}
+
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.path) return console.log(logPath());
   if (args.dir) return console.log(kbDir());
   if (args.init) {
     const file = logPath();
     ensureLog(file);
+    await refreshPage();
     return console.log(file);
   }
   const [skill, action, target] = args.positional;
@@ -83,6 +93,7 @@ function main() {
     process.exit(2);
   }
   append({ skill, action, target, why: args.why, evidence: args.evidence, where: args.where });
+  await refreshPage();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

@@ -50,3 +50,15 @@ test('formatEntry keeps one line per entry', () => {
 test('missing --why is refused', () => {
   assert.throws(() => run(root, 'sweep', 'delete', 'docs/a.md'));
 });
+
+test('each write rebuilds the activity page with the log baked in', () => {
+  run(root, 'verify', 'verify', 'docs/wiki/x.md', '--why', 'closing tag </script> in a reason');
+  const page = readFileSync(path.join(root, '.git', 'kb', 'log.html'), 'utf8');
+  assert.ok(!page.includes('__KB_DATA__'));
+  const json = page.match(/<script id="kb-data" type="application\/json">(.*?)<\/script>/s)[1];
+  const data = JSON.parse(json);
+  assert.match(data.log, /\| verify \| verify \| docs\/wiki\/x\.md \|/);
+  assert.match(data.log, /closing tag <\/script> in a reason/);
+  assert.equal(data.repo, path.basename(root));
+  assert.equal(git(root, 'status', '--porcelain'), '');
+});

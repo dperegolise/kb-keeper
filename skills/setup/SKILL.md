@@ -58,7 +58,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" --init
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" setup config kb.json --why "<one line: the classes and sources chosen>"
 ```
 
-The log is `kb/log` inside the repository's git directory. Git never tracks it, and sweeps run in any worktree add to the same file. Tell the person where it is.
+The log is `kb/log` inside the repository's git directory. Git never tracks it, and sweeps run in any worktree add to the same file. Every entry also rebuilds `kb/log.html` next to it, a page with charts and the log grouped by run. Tell the person both paths, and that `/kb:log` opens the page in their browser.
 
 ## 5. Create the wiki
 
