@@ -84,4 +84,6 @@ Expect a large reduction. A 500-line design doc for a feature that has shipped u
 
 When nothing in a doc is worth keeping, skip the wiki, delete the doc, and use `kb: delete <path>` as the subject with the same body. Log it with the action `delete`.
 
+Run by hand, distill does not take the sweep lock. If `node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" status` shows a sweep running, tell the person that their change may conflict with its branch. Before changing anything outside the repository, re-read it, and if it changed since you read it, stop and show the person both versions.
+
 When a person asks you directly to distill a doc, they have already decided it should go. When the sweep calls this, the sweep's rules decide whether a doc may be deleted without asking.

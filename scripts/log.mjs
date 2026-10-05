@@ -12,7 +12,7 @@
 // Each line: time | skill | action | target | where | branch | why | evidence
 
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,9 +35,15 @@ export function kbDir(cwd = process.cwd()) {
 
 export const logPath = (cwd = process.cwd()) => path.join(kbDir(cwd), 'log');
 
+// Create the log with its header only if it does not exist yet. `wx` makes that atomic: two runs
+// starting at once cannot both write the header, and neither can truncate the other's entries.
 function ensureLog(file) {
   mkdirSync(path.dirname(file), { recursive: true });
-  if (!existsSync(file)) writeFileSync(file, HEADER);
+  try {
+    writeFileSync(file, HEADER, { flag: 'wx' });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
 }
 
 const clean = (s) => String(s ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
@@ -69,8 +75,13 @@ function parseArgs(argv) {
   return out;
 }
 
-// Rebuild the activity page after a write. A page that fails to build never fails the log entry.
-async function refreshPage() {
+// After a write: refresh the sweep lock's heartbeat if this branch holds it, and rebuild the
+// activity page. Neither can fail the log entry.
+async function afterWrite() {
+  try {
+    const { heartbeat } = await import('./lock.mjs');
+    heartbeat();
+  } catch {}
   try {
     const { render } = await import('./view.mjs');
     render();
@@ -84,7 +95,7 @@ async function main() {
   if (args.init) {
     const file = logPath();
     ensureLog(file);
-    await refreshPage();
+    await afterWrite();
     return console.log(file);
   }
   const [skill, action, target] = args.positional;
@@ -93,7 +104,7 @@ async function main() {
     process.exit(2);
   }
   append({ skill, action, target, why: args.why, evidence: args.evidence, where: args.where });
-  await refreshPage();
+  await afterWrite();
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

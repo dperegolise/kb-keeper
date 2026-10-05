@@ -15,12 +15,21 @@ A sweep usually runs unattended on a schedule. Do not stop to ask questions. Any
 ## 1. Set up
 
 1. Read `kb.json` at the repo root. If it is missing, stop and say that `/kb:setup` has to run first.
-2. Check for a sweep that is still waiting: `gh pr list --state open --search "head:kb/sweep-"`. If one is open, stop and report its link. Sweeps stacking up unread means the review queue is not being read, and adding to it makes that worse.
-3. `git fetch`, then create the branch `kb/sweep-<YYYY-MM-DD>` from `origin/<base>`, where `<base>` is `base` in `kb.json` or else the default branch. If that name is already taken locally or on the remote, add `-2`, `-3` and so on.
+2. Take the sweep lock, so only one sweep runs at a time in this clone, whichever worktree it starts in:
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" acquire
+   ```
+
+   It prints a token: keep it for the end. If it exits with code 3, another sweep is running. Stop, log a `blocked` line with the holder it printed as the reason, and report who holds the lock. Never delete the lock file yourself. A lock whose sweep died goes stale after an hour without a log entry and is taken over automatically.
+
+   From here on, release the lock however the run ends, including when you stop early or something fails: `node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" release --token <token>`.
+3. Check for a sweep that is still waiting: `gh pr list --state open --search "head:kb/sweep-"`. If one is open, release the lock, stop and report its link. Sweeps stacking up unread means the review queue is not being read, and adding to it makes that worse.
+4. `git fetch`, then create the branch `kb/sweep-<YYYY-MM-DD>` from `origin/<base>`, where `<base>` is `base` in `kb.json` or else the default branch. If that name is already taken locally or on the remote, add `-2`, `-3` and so on.
    - If the working tree is clean, create the branch right here, in the current checkout. Note the branch you started on so you can switch back at the end.
    - If it has uncommitted changes, never touch them. Create a `git worktree` next to the repository (`../<repo>-kb-sweep-<date>`), not in a temp directory, so the person can find it afterwards.
-4. Make sure the repository's commit hooks can run before your first commit. A fresh worktree usually has no installed dependencies, and a hook that runs a formatter or linter then fails. If the repository has a lockfile but its dependencies are not installed in this checkout, install them with its package manager (for example `pnpm install --frozen-lockfile`). Never bypass a hook. Run the formatter it uses on the files you wrote before committing them. If a hook fails on a file you did not write, flag it.
-5. Take the inventory and keep the JSON where you can re-read it:
+5. Make sure the repository's commit hooks can run before your first commit. A fresh worktree usually has no installed dependencies, and a hook that runs a formatter or linter then fails. If the repository has a lockfile but its dependencies are not installed in this checkout, install them with its package manager (for example `pnpm install --frozen-lockfile`). Never bypass a hook. Run the formatter it uses on the files you wrote before committing them. If a hook fails on a file you did not write, flag it.
+6. Take the inventory and keep the JSON where you can re-read it:
 
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/inventory.mjs" --summary
@@ -85,7 +94,7 @@ Open work from distilled docs goes to the backlog, and nothing else removes it, 
 
 - **Cross-reference.** For each doc you judge, look in the sources for the same subject: the task that tracks a backlog item, the memory note about a feature, a doc in a sibling repository. Use what you find as evidence, the same way you use the code.
 - **Find the source of truth.** When they disagree, the code wins on how the system works. A source wins on what its `truthFor` names. Otherwise the most recent statement you can confirm wins. When you cannot tell, it goes under "Needs you".
-- **Bring the rest in line.** Fix the repository's copies in your commits as usual. A source with `"access": "write"` you update directly. Git cannot revert that change, so log each outside write with the old value and list it under "Done" with where it happened. For a source with `"access": "read"`, list the correction under "Needs you".
+- **Bring the rest in line.** Fix the repository's copies in your commits as usual. A source with `"access": "write"` you update directly. Git cannot revert that change, so log each outside write with the old value and list it under "Done" with where it happened. **Re-read the item immediately before you write it.** If it changed since you read it for your decision, whether by the person, another tool or another session, do not write. List it under "Needs you" with both versions. For a source with `"access": "read"`, list the correction under "Needs you".
 - **Respect `ignore`.** Paths in `ignore` are off limits everywhere, both as evidence and as something to change.
 - **Keep outside data out of shared places.** Put working copies under `tmp/` in kb's local folder, not in `/tmp`, and delete them when you finish.
 - **Keep the open-work lists in step.** When a source with `"access": "write"` is the truth for open work, an open item you move to the backlog also needs a task there. Find the existing task, or create one. When you prune a backlog entry, close or update its task.
@@ -100,7 +109,7 @@ Every action goes in the local activity log, with the reason, so that a person c
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" sweep <action> <target> --why "<reason>" [--evidence "<commit, file or task>"] [--where <source name>]
 ```
 
-Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log lives in the git directory, so it records your reasoning without adding to the pull request or the repository.
+Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) right after you take the lock, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log lives in the git directory, so it records your reasoning without adding to the pull request or the repository.
 
 ## 4. Order and budget
 
@@ -152,6 +161,6 @@ Each doc is its own commit. `git revert <sha>` restores one. After a squash merg
 `git log --diff-filter=D --format=%h -- <path>` and then `git checkout <sha>^ -- <path>`.
 ```
 
-Do not merge the pull request. If you cannot push or `gh` is unavailable, leave the branch in place and report its name along with the body you would have posted.
+Release the sweep lock with your token. Do not merge the pull request. If you cannot push or `gh` is unavailable, leave the branch in place and report its name along with the body you would have posted.
 
 If you created the branch in the person's own checkout and started on a branch, switch back to it. If you started on a detached HEAD, stay on the sweep branch. Leave a worktree you created in place, and report its path.

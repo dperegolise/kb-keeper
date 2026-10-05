@@ -56,6 +56,9 @@ Do not stamp a page you reported under the three cases above.
 
 ## 5. Commit
 
+Run by hand, verify does not take the sweep lock. If `node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" status` shows a sweep running, mention that your corrections may conflict with its branch.
+
+
 When you are verifying as part of someone's in-progress change, leave the edits in the working tree for them to commit with their work, unless they asked you to commit.
 
 Either way, log each page in the activity log: `verify` for a page you stamped, `flag` for one you reported.
