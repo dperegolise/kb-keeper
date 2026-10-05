@@ -37,7 +37,7 @@ Existing docs that must stay true where they are (`README.md`, `CLAUDE.md`, a ru
 
 Show the person the proposed classification as a table of pattern, class, exit condition, doc count and line count. Ask about the groups you were unsure of before writing anything. A wrong class is the one setup mistake that costs something later: `ephemeral` on a doc that should be a record gets it deleted.
 
-Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one. Set `backlog` to a Markdown file in the repository where this project keeps open work. If the project also tracks work in an outside tool (Jira, Linear, Todoist, a sprint board), still create the backlog file as the inbox for open work found in docs, and list the tool under `sources` so sweeps can keep the two in agreement. Run the summary again and confirm that nothing important is left unclassified.
+Then write `kb.json`. The format is in [config.md](config.md). Set `base` when sweeps should target a branch other than the default one. Set `backlog` to a Markdown file in the repository where this project keeps open work. If the project also tracks work in an outside tool (Jira, Linear, Todoist, a sprint board), still create the backlog file as the inbox for open work found in docs, and list the tool as a local source (step 3) so sweeps can keep the two in agreement. Run the summary again and confirm that nothing important is left unclassified.
 
 ## 3. Outside sources
 
@@ -47,18 +47,18 @@ Ask the person where else information about this project lives, and whether kb m
 - Claude memory for this repository: `~/.claude/projects/<the repository path with / replaced by ->/memory/`
 - other repositories on the machine that document the same product or business
 
-Write each one to `sources` in `kb.json` as described in [config.md](config.md): how to reach it, its access, and what it is the source of truth for. Sweeps cross-reference everything listed there and bring the copies that are wrong in line with the source of truth. Leave `sources` empty when the person wants kb to look only at the repository, and always for a repository whose sweeps run in CI, where none of these tools exist.
+Write them to `sources.json` in kb's local folder (`node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" --dir` prints it; it is inside the git directory) as described in [config.md](config.md): how to reach each one, its access, and what it is the source of truth for. Never put sources in `kb.json`. They name one person's tools and paths, and the repository stays tool-agnostic. Sweeps cross-reference everything listed and bring the wrong copies in line with the source of truth. Without the file, as in CI or on someone else's clone, kb looks only at the repository.
 
 ## 4. Start the activity log
 
-kb keeps a local log of every action it takes and why. Add `.kb.log` to `.gitignore`, then create the log:
+kb keeps a local log of every action it takes and why. Create it:
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" --init
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" setup config kb.json --why "<one line: the classes and sources chosen>"
 ```
 
-The log is `.kb.log` at the root of the main checkout, so sweeps run in any worktree add to the same file.
+The log is `kb/log` inside the repository's git directory. Git never tracks it, and sweeps run in any worktree add to the same file. Tell the person where it is.
 
 ## 5. Create the wiki
 
@@ -88,6 +88,6 @@ Offer both options and install the one the person picks.
 
 ## 8. Hand over
 
-Commit `kb.json`, the `.gitignore` line, the wiki index, the `CLAUDE.md` section and any workflow files, and open the pull request.
+Commit `kb.json`, the wiki index, the `CLAUDE.md` section and any workflow files, and open the pull request.
 
 In the description, suggest the order for the first cleanup: one `/kb:sweep <folder>` per folder, starting with the folders that have the most expired docs, and leaving design docs for last because they need the most reading. Each run produces its own pull request, and merging one makes the next one start from a smaller pile.

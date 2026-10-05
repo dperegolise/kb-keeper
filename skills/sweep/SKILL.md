@@ -54,7 +54,7 @@ Give each one a verdict:
 
 You may distill or delete without asking only when all of these hold:
 
-1. **The exit condition has happened and you can point to the proof.** `expired: true` is proof for rules based on age or count. Otherwise the proof is in the repository (the commit that fixed the bug, the code that implements the design, the newer doc that replaces this one) or in an outside source listed in `kb.json`, as described under "Outside sources". A "STATUS: done" line inside the doc is a lead to check, not proof.
+1. **The exit condition has happened and you can point to the proof.** `expired: true` is proof for rules based on age or count. Otherwise the proof is in the repository (the commit that fixed the bug, the code that implements the design, the newer doc that replaces this one) or in a local source, as described under "Outside sources". A "STATUS: done" line inside the doc is a lead to check, not proof.
 2. **Nothing lasting is lost.** Every claim that is still true, that the code cannot tell a reader, and that someone will need again is already in the wiki or goes there in this same commit.
 3. **Nothing open is lost.** Unanswered questions, unfixed findings and unbuilt parts move to the backlog named in `kb.json`. If no backlog is configured, flag the doc. The pull request is not storage: once it is merged nobody reads it again. When an open item is a question only a person can answer, such as a warning about money, accounts or a customer, put it in the backlog as a `Decide:` entry, or keep the doc and flag it. Never let the pull request hold the only copy.
 4. **Its references are handled.** Every file in `inbound` is repointed or cleaned up as the `distill` skill describes.
@@ -81,15 +81,16 @@ Open work from distilled docs goes to the backlog, and nothing else removes it, 
 
 ## Outside sources
 
-`sources` in `kb.json` lists places outside the repository that hold information about the same project, such as a task manager, Claude memory or another repository. Without it, use only this repository and its history. With it, the sweep keeps all of them in agreement:
+`sources.json` in kb's local folder (`node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" --dir`) lists places outside the repository that hold information about the same project, such as a task manager, Claude memory or another repository. It is local to this machine and never committed. Without it, use only this repository and its history. With it, the sweep keeps all of them in agreement:
 
 - **Cross-reference.** For each doc you judge, look in the sources for the same subject: the task that tracks a backlog item, the memory note about a feature, a doc in a sibling repository. Use what you find as evidence, the same way you use the code.
 - **Find the source of truth.** When they disagree, the code wins on how the system works. A source wins on what its `truthFor` names. Otherwise the most recent statement you can confirm wins. When you cannot tell, it goes under "Needs you".
 - **Bring the rest in line.** Fix the repository's copies in your commits as usual. A source with `"access": "write"` you update directly. Git cannot revert that change, so log each outside write with the old value and list it under "Done" with where it happened. For a source with `"access": "read"`, list the correction under "Needs you".
 - **Respect `ignore`.** Paths in `ignore` are off limits everywhere, both as evidence and as something to change.
-- **Keep outside data out of shared places.** Put working copies under `$(git rev-parse --git-common-dir)/kb-tmp/`, not in `/tmp`, and delete them when you finish.
-- **Keep the open-work lists in step.** When a source with `"access": "write"` is the truth for open work, an open item you move to the backlog also needs a task there. Find the existing task, or create one, and name it in the backlog entry. When you prune a backlog entry, close or update its task.
-- **Brief your helpers.** If you hand work to helper agents, give them these rules too: the `kb-tmp` folder, the `ignore` list, and that they report findings to you rather than writing to sources or the log themselves.
+- **Keep outside data out of shared places.** Put working copies under `tmp/` in kb's local folder, not in `/tmp`, and delete them when you finish.
+- **Keep the open-work lists in step.** When a source with `"access": "write"` is the truth for open work, an open item you move to the backlog also needs a task there. Find the existing task, or create one. When you prune a backlog entry, close or update its task.
+- **Keep the repository tool-agnostic.** Never write a source's name, task IDs or links, or local paths into files in the repository. The link between a backlog entry and its task goes in the log (`--evidence` with the task ID, `--where` with the source), and you find it again by searching the source for the entry's title.
+- **Brief your helpers.** If you hand work to helper agents, give them these rules too: the local `tmp/` folder, the `ignore` list, keeping source names out of the repository, and that they report findings to you rather than writing to sources or the log themselves.
 
 ## Log what you do
 
@@ -99,7 +100,7 @@ Every action goes in the local activity log, with the reason, so that a person c
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" sweep <action> <target> --why "<reason>" [--evidence "<commit, file or task>"] [--where <source name>]
 ```
 
-Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log is gitignored, so it records your reasoning without adding to the pull request.
+Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) when you begin, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log lives in the git directory, so it records your reasoning without adding to the pull request or the repository.
 
 ## 4. Order and budget
 

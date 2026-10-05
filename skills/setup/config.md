@@ -8,11 +8,6 @@
   "base": "main",
   "backlog": "docs/BACKLOG.md",
   "ignore": ["finance/**", "notes/**"],
-  "sources": [
-    { "name": "Todoist", "how": "the `td` CLI, project Product", "access": "write", "truthFor": "which work is open and its status" },
-    { "name": "Claude memory", "how": "~/.claude/projects/-home-me-src-app/memory/", "access": "write" },
-    { "name": "marketing site", "how": "~/src/app-site", "access": "read", "truthFor": "pricing and plan names" }
-  ],
   "rules": [
     { "match": ["README.md", "CLAUDE.md", "docs/RUNBOOK.md"], "class": "living" },
     { "match": "docs/adr/**", "class": "record" },
@@ -31,7 +26,6 @@
 | `backlog` | none | Markdown file in the repository where open work goes when a doc is distilled. Sweeps also prune entries whose fix is in the code. Without it, docs that contain open work are flagged |
 | `docs` | `**/*.md`, `**/*.mdx`, `**/*.docx`, `**/*.pdf` | Globs for what counts as a document. Replaces the default |
 | `ignore` | `**/node_modules/**`, `.claude/**`, `.github/**`, `**/CHANGELOG*`, `**/LICENSE*` | Globs for documents kb should never look at. Adds to the default |
-| `sources` | none | Places outside the repository that hold information about the same project. Sweeps cross-reference them and bring wrong copies in line with the source of truth. Without it, kb looks only at the repository. See below |
 | `rules` | none | Ordered list. The first rule whose `match` fits a path decides its class |
 
 ## Rules
@@ -44,7 +38,19 @@
 | `maxAgeDays` | Ephemeral only. The doc counts as expired once its last commit is older than this |
 | `keepLatest` | Ephemeral only. Of the docs this rule matches, sorted by path, all but the last N count as expired. Meant for date-prefixed file names |
 
-## Sources
+## Local sources
+
+Outside sources are not part of `kb.json`, because they name one person's tools and paths and the repository stays tool-agnostic. They live in `sources.json` in kb's local folder, inside the git directory (`node scripts/log.mjs --dir` prints it), and are never committed:
+
+```json
+[
+  { "name": "Todoist", "how": "the `td` CLI, project Product", "access": "write", "truthFor": "which work is open and its status" },
+  { "name": "Claude memory", "how": "~/.claude/projects/-home-me-src-app/memory/", "access": "write" },
+  { "name": "marketing site", "how": "~/src/app-site", "access": "read", "truthFor": "pricing and plan names" }
+]
+```
+
+Sweeps cross-reference every source and bring wrong copies in line with the source of truth. Without the file, kb looks only at the repository.
 
 | Field | Meaning |
 |---|---|
@@ -57,7 +63,7 @@ Paths in `ignore` are off limits in sources too.
 
 ## Activity log
 
-Every skill appends one line per action to `.kb.log` at the root of the main checkout: time, skill, action, target, where (`repo` or a source name), branch, why, evidence. Setup adds it to `.gitignore`. `scripts/log.mjs` writes it, and `node scripts/log.mjs --path` prints where it is.
+Every skill appends one line per action to `log` in kb's local folder: time, skill, action, target, where (`repo` or a source name), branch, why, evidence. The folder is `kb/` inside the repository's common git directory, so git never tracks it and every worktree shares it. `scripts/log.mjs` writes it, and `node scripts/log.mjs --path` prints where it is.
 
 A doc that no rule matches is `unclassified`, and the sweep either proposes a rule for it or flags it.
 

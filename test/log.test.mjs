@@ -22,16 +22,21 @@ before(() => {
   git(root, 'worktree', 'add', '-q', '-b', 'kb/sweep-x', worktree);
 });
 
-test('the log lives at the main checkout root, from the repo and from a worktree', () => {
-  assert.equal(logPath(root), path.join(root, '.kb.log'));
-  assert.equal(logPath(worktree), path.join(root, '.kb.log'));
+test('the log lives in the common git dir, from the repo and from a worktree', () => {
+  assert.equal(logPath(root), path.join(root, '.git', 'kb', 'log'));
+  assert.equal(logPath(worktree), path.join(root, '.git', 'kb', 'log'));
+});
+
+test('kb state is never tracked: git status stays clean after logging', () => {
+  run(root, 'sweep', 'flag', 'docs/b.md', '--why', 'unsure');
+  assert.equal(git(root, 'status', '--porcelain'), '');
 });
 
 test('entries from a worktree land in the shared log with their branch', () => {
-  assert.equal(run(root, '--init'), path.join(root, '.kb.log'));
+  assert.equal(run(root, '--init'), path.join(root, '.git', 'kb', 'log'));
   run(worktree, 'sweep', 'delete', 'docs/a.md', '--why', 'expired (keepLatest 10)', '--evidence', 'abc123');
   run(root, 'sweep', 'update', 'task 42', '--where', 'Todoist', '--why', 'built in | def456');
-  const lines = readFileSync(path.join(root, '.kb.log'), 'utf8').trim().split('\n');
+  const lines = readFileSync(path.join(root, '.git', 'kb', 'log'), 'utf8').trim().split('\n').filter((l) => !l.includes('| flag |'));
   assert.match(lines[0], /^# kb activity log/);
   assert.match(lines[1], / \| sweep \| delete \| docs\/a\.md \| repo \| kb\/sweep-x \| expired \(keepLatest 10\) \| abc123$/);
   assert.match(lines[2], / \| sweep \| update \| task 42 \| Todoist \| main \| built in \/ def456 \|$/);
