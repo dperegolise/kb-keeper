@@ -25,7 +25,7 @@ The pieces:
 - **`/kb:verify [docs | --changed-since <ref>]`** checks living docs against the code and fixes only what is false.
 - **`/kb:setup`** classifies a repository's existing docs, writes `kb.json`, and installs the schedule.
 - **`/kb:review`** walks you through everything kb flagged for you, one item at a time, and carries out each decision. Answered items are not raised again unless their doc changes.
-- **`/kb:log`** opens the activity page: what is waiting on you, what kb did in this repository, and why.
+- **`/kb:log`** opens the activity page: what is waiting on you, with a box on each item to type your answer, what kb did in this repository, and why.
 
 ## When the sweep acts without asking
 

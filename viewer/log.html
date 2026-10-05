@@ -105,6 +105,17 @@
   .items.all .item.more { display: flex; }
   .show-all { margin-top: 10px; border: 1px solid var(--ring); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
   .show-all:hover { background: var(--surface-2); }
+  .reply { display: flex; flex-direction: column; gap: 4px; }
+  .reply textarea { width: 100%; resize: none; overflow: hidden; min-height: 34px; border: 1px solid var(--ring); background: var(--page); color: var(--ink); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13px; line-height: 1.4; }
+  .reply textarea::placeholder { color: var(--muted); }
+  .reply textarea:focus { outline: 2px solid var(--s1); outline-offset: -1px; border-color: transparent; }
+  .reply .state { font-size: 12px; color: var(--muted); min-height: 16px; }
+  .reply .state.ok { color: var(--ink-2); }
+  .item.replied { border-color: var(--s1); }
+  .listen { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-left: auto; }
+  .listen .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--axis); }
+  .listen.on .dot { background: #0ca30c; }
+  .copy-replies { border: 1px solid var(--ring); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
   .item .foot { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: auto; }
   .item .foot code { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   .clear { padding: 16px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
@@ -208,14 +219,7 @@
       .filter((e) => e.time && e.action);
   }
 
-  // Served over http (an IDE preview server, for example), read the live log next to this page.
   async function load() {
-    if (/^https?:/.test(location.protocol)) {
-      try {
-        const res = await fetch('log', { cache: 'no-store' });
-        if (res.ok) return { ...payload, log: await res.text(), live: true };
-      } catch {}
-    }
     return payload;
   }
 
@@ -419,6 +423,77 @@
     return d >= 1 ? `${d} day${d === 1 ? '' : 's'} ago` : h >= 1 ? `${h} hour${h === 1 ? '' : 's'} ago` : 'just now';
   };
 
+  // Replies: saved by the listener into replies.json (baked into this page), or, while the listener
+  // is down, kept in this browser until it is back.
+  const listener = payload.listener || null;
+  const saved = payload.replies || {};
+  let pending = {};
+  try { pending = JSON.parse(localStorage.getItem('kb-pending-replies') || '{}'); } catch {}
+  const savePending = () => { try { localStorage.setItem('kb-pending-replies', JSON.stringify(pending)); } catch {} };
+  const replyText = (id) => (pending[id] !== undefined ? pending[id] : saved[id] ? saved[id].text : '');
+
+  async function postReply(id, text) {
+    if (!listener) throw new Error('not listening');
+    const res = await fetch(`http://127.0.0.1:${listener.port}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-KB-Token': listener.token },
+      body: JSON.stringify({ id, text }),
+    });
+    if (!res.ok) throw new Error('refused: ' + res.status);
+  }
+
+  function wireReplies() {
+    const copyBtn = document.getElementById('copy-replies');
+    const refreshCopy = () => {
+      const ids = Object.keys(pending).filter((id) => pending[id]);
+      if (copyBtn) copyBtn.hidden = !ids.length;
+    };
+    const countEl = document.getElementById('replied-count');
+    const recount = () => {
+      if (countEl) countEl.textContent = document.querySelectorAll('.item.replied').length;
+    };
+    copyBtn?.addEventListener('click', async () => {
+      const text = Object.entries(pending).filter(([, t]) => t).map(([id, t]) => `${id}: ${t}`).join('\n');
+      try { await navigator.clipboard.writeText('/kb:review\n' + text); copyBtn.textContent = 'Copied'; } catch { copyBtn.textContent = 'Copy failed'; }
+      setTimeout(() => { copyBtn.textContent = 'Copy replies'; }, 1500);
+    });
+    document.querySelectorAll('.reply').forEach((box) => {
+      const ta = box.querySelector('textarea'), state = box.querySelector('.state'), id = box.dataset.id;
+      const card = box.closest('.item');
+      const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+        e.preventDefault();
+        const text = ta.value.trim();
+        state.className = 'state';
+        state.textContent = 'Saving…';
+        try {
+          await postReply(id, text);
+          delete pending[id];
+          savePending();
+          state.className = 'state ok';
+          state.textContent = text ? 'Saved. /kb:review will act on it.' : 'Reply withdrawn.';
+        } catch {
+          pending[id] = text;
+          savePending();
+          state.textContent = text ? 'Kept in this browser: kb is not listening. Run /kb:log, or use Copy replies.' : '';
+        }
+        card.classList.toggle('replied', !!text);
+        recount();
+        refreshCopy();
+      });
+    });
+    refreshCopy();
+    // Replies typed while the listener was down go to kb as soon as it is back.
+    if (listener) {
+      for (const [id, text] of Object.entries(pending)) {
+        postReply(id, text).then(() => { delete pending[id]; savePending(); refreshCopy(); }).catch(() => {});
+      }
+    }
+  }
+
   // Open items first, oldest first: the longer something has waited, the higher it sits. Flagged
   // docs and decisions are listed apart, a few of each until "Show all".
   const SHOW = 4;
@@ -429,7 +504,7 @@
   function needsPanel(open, answered) {
     if (!open.length && !answered.length) return '';
     const card = (r, i) => `
-      <article class="card item${i >= SHOW ? ' more' : ''}">
+      <article class="card item${i >= SHOW ? ' more' : ''}${replyText(r.id) ? ' replied' : ''}" data-id="${esc(r.id)}">
         <div class="item-top">
           <span class="kind"><i class="key" style="background:${r.kind === 'decide' ? 'var(--s3)' : 'var(--s2)'}"></i>${r.kind === 'decide' ? 'Decision' : 'Flagged doc'}</span>
           <code>${esc(r.doc)}</code>
@@ -441,6 +516,10 @@
           ${r.whyNot ? `<dt>Why it didn't</dt><dd>${esc(r.whyNot)}</dd>` : ''}
           ${r.evidence ? `<dt>Evidence</dt><dd>${esc(r.evidence)}</dd>` : ''}
         </dl>
+        <div class="reply" data-id="${esc(r.id)}">
+          <textarea rows="1" aria-label="Your answer to ${esc(r.id)}" placeholder="Your answer. Enter saves, Shift+Enter for a new line">${esc(replyText(r.id))}</textarea>
+          <div class="state">${replyText(r.id) ? 'Saved. /kb:review will act on it.' : ''}</div>
+        </div>
         <div class="foot"><code>${esc(r.id)}</code>${r.pr ? `<a href="${esc(r.pr)}" target="_blank" rel="noopener">pull request</a>` : ''}${r.branch ? `<span>${esc(r.branch)}</span>` : ''}</div>
       </article>`;
     const answeredHtml = answered.length ? `
@@ -458,7 +537,12 @@
       </details>` : '';
     return `
       <section class="needs">
-        <div class="needs-head"><h2>Needs you</h2><span class="hint">${open.length} open · answer them with <code>/kb:review</code></span></div>
+        <div class="needs-head">
+          <h2>Needs you</h2>
+          <span class="hint">${open.length} open · <span id="replied-count">${open.filter((r) => replyText(r.id)).length}</span> replied · type an answer on a card, then run <code>/kb:review</code></span>
+          <button class="copy-replies" id="copy-replies" type="button" hidden>Copy replies</button>
+          <span class="listen${listener ? ' on' : ''}" title="${listener ? 'Replies save straight to kb' : 'Run /kb:log to start the listener; until then replies stay in this browser'}"><i class="dot"></i>${listener ? 'Saving to kb' : 'kb not listening'}</span>
+        </div>
         ${open.length ? KINDS.map((k) => {
           const list = open.filter((r) => (r.kind === 'decide') === (k.id === 'decide'));
           if (!list.length) return '';
@@ -482,7 +566,7 @@
     const entries = parse(data.log);
     const sub = document.getElementById('sub');
     sub.innerHTML = `${esc(data.repo || 'repository')} · ${entries.length.toLocaleString()} entr${entries.length === 1 ? 'y' : 'ies'}` +
-      (data.live ? ' · live' : data.generated ? ` · updated ${esc(fmtTime(data.generated))}` : '');
+      (data.generated ? ` · updated ${esc(fmtTime(data.generated))}` : '');
     document.getElementById('foot').innerHTML = data.path ? `Log: <code>${esc(data.path)}</code>` : '';
 
     const review = Array.isArray(data.review) ? data.review : [];
@@ -492,6 +576,7 @@
 
     if (!entries.length) {
       app.innerHTML = needsHtml + `<div class="card nolog">No kb activity yet. Each sweep, distill and verify adds lines to the log, and this page fills in as they do.</div>`;
+      wireReplies();
       return;
     }
 
@@ -528,6 +613,7 @@
         <div id="groups"></div>
       </section>`;
 
+    wireReplies();
     document.querySelectorAll('.show-all').forEach((b) => b.addEventListener('click', () => {
       const list = document.getElementById(b.dataset.for);
       const all = list.classList.toggle('all');

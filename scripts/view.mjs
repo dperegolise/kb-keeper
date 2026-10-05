@@ -23,28 +23,49 @@ function repoName(dir) {
   return path.basename(common) === '.git' ? path.basename(path.dirname(common)) : path.basename(common, '.git');
 }
 
-function readReview(dir) {
+function readJson(file, fallback) {
   try {
-    return JSON.parse(readFileSync(path.join(dir, 'review.json'), 'utf8'));
+    return JSON.parse(readFileSync(file, 'utf8'));
   } catch {
-    return [];
+    return fallback;
   }
 }
 
-export function render(cwd = process.cwd()) {
+// The reply listener's address and token, when it is running (serve.mjs).
+function listener(dir) {
+  const info = readJson(path.join(dir, 'server.json'), null);
+  if (!info?.pid) return null;
+  try {
+    process.kill(info.pid, 0);
+  } catch {
+    return null;
+  }
+  return { port: info.port, token: info.token };
+}
+
+// The page as a string. `live` marks a page served by the listener.
+export function renderHtml(cwd = process.cwd(), { live = false } = {}) {
   const dir = kbDir(cwd);
-  mkdirSync(dir, { recursive: true });
   const log = logPath(cwd);
   const data = {
     repo: repoName(dir),
     generated: new Date().toISOString(),
     path: log,
     log: existsSync(log) ? readFileSync(log, 'utf8') : '',
-    review: readReview(dir),
+    review: readJson(path.join(dir, 'review.json'), []),
+    replies: readJson(path.join(dir, 'replies.json'), {}),
+    listener: listener(dir),
+    live,
   };
   // `<` escaped so nothing in the log can close the script tag that holds it.
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
-  const html = readFileSync(TEMPLATE, 'utf8').replace('__KB_DATA__', () => json);
+  return readFileSync(TEMPLATE, 'utf8').replace('__KB_DATA__', () => json);
+}
+
+export function render(cwd = process.cwd()) {
+  const dir = kbDir(cwd);
+  mkdirSync(dir, { recursive: true });
+  const html = renderHtml(cwd);
   const out = pagePath(cwd);
   // Write then rename, so two runs rebuilding at once never leave a half-written page.
   const tmp = `${out}.${process.pid}.tmp`;

@@ -10,6 +10,10 @@
 //   node review.mjs show <id>
 //   node review.mjs answer <id> --answer "<the person's decision>" [--outcome "<what was done>"]
 //   node review.mjs link-pr --branch <name> --pr <url>   attach a sweep's pull request to its items
+//   node review.mjs reply <id> --text "<reply>"            save the person's reply for /kb:review to act on
+//
+// Replies typed on the activity page land in `replies.json` (through serve.mjs). `list` shows each
+// open item's reply, and answering an item clears it.
 
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -19,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { afterWrite, append, kbDir } from './log.mjs';
 
 export const reviewPath = (cwd = process.cwd()) => path.join(kbDir(cwd), 'review.json');
+export const repliesPath = (cwd = process.cwd()) => path.join(kbDir(cwd), 'replies.json');
 
 function git(cwd, args) {
   try {
@@ -46,8 +51,7 @@ const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
 
 // Read, change and write the list under a short lock, so a sweep and a review session never lose
 // each other's changes. A lock older than 30 seconds belongs to a process that died.
-export function update(cwd, change) {
-  const file = reviewPath(cwd);
+export function update(cwd, change, file = reviewPath(cwd), empty = []) {
   mkdirSync(path.dirname(file), { recursive: true });
   const lock = `${file}.lock`;
   for (let i = 0; ; i++) {
@@ -64,7 +68,10 @@ export function update(cwd, change) {
     }
   }
   try {
-    const items = load(cwd);
+    let items = empty;
+    try {
+      items = JSON.parse(readFileSync(file, 'utf8'));
+    } catch {}
     const result = change(items);
     const tmp = `${file}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify(items, null, 2) + '\n');
@@ -100,12 +107,34 @@ export function add(cwd, { doc, question, would = '', whyNot = '', kind = 'flag'
 }
 
 export function answer(cwd, id, text, outcome = '') {
-  return update(cwd, (items) => {
+  const it = update(cwd, (items) => {
     const it = items.find((x) => x.id === id);
     if (!it) return null;
     Object.assign(it, { status: 'answered', answer: text, outcome, answeredAt: new Date().toISOString(), docBlob: fingerprint(cwd, it.doc) });
     return it;
   });
+  if (it) update(cwd, (replies) => { delete replies[id]; }, repliesPath(cwd), {});
+  return it;
+}
+
+export function loadReplies(cwd = process.cwd()) {
+  try {
+    return JSON.parse(readFileSync(repliesPath(cwd), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+// A reply to an open item, saved for /kb:review. An empty text withdraws it.
+export function reply(cwd, id, text) {
+  const item = load(cwd).find((x) => x.id === id);
+  if (!item || item.status !== 'open') return null;
+  const value = String(text ?? '').trim().slice(0, 4000);
+  update(cwd, (replies) => {
+    if (value) replies[id] = { text: value, at: new Date().toISOString() };
+    else delete replies[id];
+  }, repliesPath(cwd), {});
+  return { item, text: value };
 }
 
 export function linkPr(cwd, branch, pr) {
@@ -129,7 +158,7 @@ function parseArgs(argv) {
   return out;
 }
 
-const line = (it) => `${it.id}  ${it.status.padEnd(8)} ${it.kind.padEnd(6)} ${it.doc}${it.backlog ? ` (${it.backlog})` : ''}\n    ${it.question}`;
+const line = (it) => `${it.id}  ${it.status.padEnd(8)} ${it.kind.padEnd(6)} ${it.doc}${it.backlog ? ` (${it.backlog})` : ''}\n    ${it.question}${it.reply ? `\n    reply: ${it.reply.text}` : ''}`;
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -153,7 +182,10 @@ async function main() {
     return console.log(r.item.id);
   }
   if (cmd === 'list') {
-    const items = load(cwd).filter((it) => !args.open || it.status === 'open');
+    const replies = loadReplies(cwd);
+    const items = load(cwd)
+      .filter((it) => !args.open || it.status === 'open')
+      .map((it) => (replies[it.id] && it.status === 'open' ? { ...it, reply: replies[it.id] } : it));
     if (args.json) return console.log(JSON.stringify(items, null, 2));
     return console.log(items.length ? items.map(line).join('\n') : 'nothing to review');
   }
@@ -172,6 +204,13 @@ async function main() {
     append({ skill: 'review', action: 'answer', target: it.doc, why: args.answer, evidence: [it.id, str(args.outcome)].filter(Boolean).join(': ') });
     await afterWrite();
     return console.log(`${it.id} answered`);
+  }
+  if (cmd === 'reply') {
+    const r = reply(cwd, id, str(args.text));
+    if (!r) { console.error(`no open item ${id}`); process.exit(1); }
+    append({ skill: 'review', action: 'reply', target: r.item.doc, why: r.text || '(reply withdrawn)', evidence: id });
+    await afterWrite();
+    return console.log(`${id} ${r.text ? 'reply saved' : 'reply withdrawn'}`);
   }
   if (cmd === 'link-pr') {
     const n = linkPr(cwd, str(args.branch), str(args.pr));

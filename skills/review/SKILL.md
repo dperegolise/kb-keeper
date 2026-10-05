@@ -13,7 +13,9 @@ kb flags what it is not sure about, or what is not its call, into the review lis
 node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" list --open --json
 ```
 
-If nothing is open, say so and stop. Otherwise say how many are open, then take them oldest first. If `node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" status` shows a sweep running, say that decisions about docs in its scope may conflict with its branch.
+Items the person already answered on the activity page carry a `reply`. Answers they pasted into this conversation (lines like `r-1a2b3c: delete it`) count the same way; save each with `node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" reply <id> --text "<answer>"` first.
+
+If nothing is open, say so and stop. Otherwise say how many are open and how many have replies. **Act on the replies first:** each reply is the person's decision, so carry it out (section 3) without asking again. Ask only when a reply is ambiguous, or when doing it would go further than the reply says. Then offer to go through the rest, oldest first. If `node "${CLAUDE_PLUGIN_ROOT}/scripts/lock.mjs" status` shows a sweep running, say that decisions about docs in its scope may conflict with its branch.
 
 ## 2. One item at a time
 
@@ -46,4 +48,4 @@ After each item, whatever the outcome:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" answer <id> --answer "<their decision, in their words>" --outcome "<what you did: commit, rule, or 'person will handle'>"
 ```
 
-This logs the answer, and future sweeps respect it: an answered item is not raised again unless its doc changes. Finish with a short summary of what was decided and the pull request link, and mention that `/kb:log` shows the updated list.
+This logs the answer, clears the reply, and future sweeps respect it: an answered item is not raised again unless its doc changes. Finish with a short summary of what was decided and the pull request link. Then start the listener so the page can take the next answers (`node "${CLAUDE_PLUGIN_ROOT}/scripts/serve.mjs" start`), and mention that `/kb:log` shows the updated list.
