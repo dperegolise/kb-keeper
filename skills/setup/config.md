@@ -63,7 +63,7 @@ Paths in `ignore` are off limits in sources too.
 
 ## Activity log
 
-Every skill appends one line per action to `log` in kb's local folder: time, skill, action, target, where (`repo` or a source name), branch, why, evidence. The folder is `kb/` inside the repository's common git directory, so git never tracks it and every worktree shares it. `scripts/log.mjs` writes it, and `node scripts/log.mjs --path` prints where it is. The same folder holds `sweep.lock` while a sweep runs (`scripts/lock.mjs`), so only one sweep runs at a time across all worktrees. Each write also rebuilds `log.html` in the same folder from `viewer/log.html` (`scripts/view.mjs`); `/kb:log` opens it.
+Every skill appends one line per action to `log` in kb's local folder: time, skill, action, target, where (`repo` or a source name), branch, why, evidence. The folder is `kb/` inside the repository's common git directory, so git never tracks it and every worktree shares it. `scripts/log.mjs` writes it, and `node scripts/log.mjs --path` prints where it is. The same folder holds `review.json`, the review list: every question kb is waiting on a person to answer, with its context, until `/kb:review` records the answer (`scripts/review.mjs`). It also holds `sweep.lock` while a sweep runs (`scripts/lock.mjs`), so only one sweep runs at a time across all worktrees. Each write also rebuilds `log.html` in the same folder from `viewer/log.html` (`scripts/view.mjs`); `/kb:log` opens it.
 
 A doc that no rule matches is `unclassified`, and the sweep either proposes a rule for it or flags it.
 

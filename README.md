@@ -24,7 +24,8 @@ The pieces:
 - **`/kb:distill <doc>`** folds one doc into the wiki: it keeps what is still true and that the code cannot tell you, repoints references, and deletes the source in the same commit.
 - **`/kb:verify [docs | --changed-since <ref>]`** checks living docs against the code and fixes only what is false.
 - **`/kb:setup`** classifies a repository's existing docs, writes `kb.json`, and installs the schedule.
-- **`/kb:log`** opens the activity page: what kb did in this repository, and why.
+- **`/kb:review`** walks you through everything kb flagged for you, one item at a time, and carries out each decision. Answered items are not raised again unless their doc changes.
+- **`/kb:log`** opens the activity page: what is waiting on you, what kb did in this repository, and why.
 
 ## When the sweep acts without asking
 
@@ -74,7 +75,7 @@ Then, in the repository you want to keep clean:
 
 kb can also keep information outside the repository in agreement with it. List a task manager, Claude memory or sibling repositories in a local `sources.json`, each with read or write access and what it is the source of truth for. Sweeps then cross-reference them, decide which copy is right, and correct the rest. The file lives inside the git directory and is never committed, so the repository stays tool-agnostic and a clone without it, such as CI, looks only at the repository.
 
-Every action kb takes, and the reason for it, goes to a log in the same local folder (`node scripts/log.mjs --path`). Git never tracks it. Each entry also rebuilds `log.html` beside it: summary tiles, actions over time, where they happened, and the full log grouped by run, action, place or day. It works opened straight from disk, and `/kb:log` opens it in the browser.
+Every action kb takes, and the reason for it, goes to a log in the same local folder (`node scripts/log.mjs --path`). Git never tracks it. Each entry also rebuilds `log.html` beside it: a "Needs you" panel with every open question in full, summary tiles, actions over time, where they happened, and the full log grouped by run, action, place or day. It works opened straight from disk, and `/kb:log` opens it in the browser.
 
 ## Scheduling
 

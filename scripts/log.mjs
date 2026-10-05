@@ -46,7 +46,13 @@ function ensureLog(file) {
   }
 }
 
-const clean = (s) => String(s ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
+// One line per entry, no field separators inside a field, and no field longer than MAX_FIELD:
+// the log is a summary, and the details live in commits, pull requests and the review list.
+export const MAX_FIELD = 600;
+const clean = (s) => {
+  const v = String(s ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/').trim();
+  return v.length > MAX_FIELD ? v.slice(0, MAX_FIELD - 1) + '…' : v;
+};
 
 export function formatEntry({ skill, action, target, where = 'repo', branch = '', why, evidence = '' }, now = new Date()) {
   const time = now.toISOString().replace(/\.\d+Z$/, 'Z');
@@ -77,7 +83,7 @@ function parseArgs(argv) {
 
 // After a write: refresh the sweep lock's heartbeat if this branch holds it, and rebuild the
 // activity page. Neither can fail the log entry.
-async function afterWrite() {
+export async function afterWrite() {
   try {
     const { heartbeat } = await import('./lock.mjs');
     heartbeat();

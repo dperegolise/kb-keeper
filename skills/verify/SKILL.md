@@ -46,7 +46,7 @@ Three cases are not yours to fix quietly:
 - **The page states a rule and the code breaks it.** That may be a bug in the code, not an error in the doc. Leave the doc as it is and report the mismatch.
 - **You cannot tell whether a statement is true.** Leave it and report it.
 
-In a sweep, reports go in the pull request's "Needs you" section. Otherwise, tell the person you are working with.
+Put each report on the review list, so it waits until someone answers it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" add --doc <page> --question "<what is in doubt>" --would "<the fix you would make>" --why-not "<which case above>"`. In a sweep, also list it under the pull request's "Needs you". Otherwise, tell the person you are working with.
 
 ## 4. Stamp the page
 
@@ -61,7 +61,7 @@ Run by hand, verify does not take the sweep lock. If `node "${CLAUDE_PLUGIN_ROOT
 
 When you are verifying as part of someone's in-progress change, leave the edits in the working tree for them to commit with their work, unless they asked you to commit.
 
-Either way, log each page in the activity log: `verify` for a page you stamped, `flag` for one you reported.
+Either way, log each page you stamped as `verify` (`review.mjs add` already logged the ones you reported).
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" verify verify docs/wiki/dialer-pacing.md --why "<what was false, or: all true>" --evidence "<file that shows it>"

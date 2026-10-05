@@ -10,7 +10,22 @@ Scope: $ARGUMENTS (empty means the whole repository)
 
 Docs accumulate because writing one is easy and nothing ever removes it. The sweep is the removal step. It goes through the docs, decides what each one is still good for, acts where the evidence is clear, and hands the rest to a person in one pull request.
 
-A sweep usually runs unattended on a schedule. Do not stop to ask questions. Anything you would ask becomes an entry under "Needs you" in the pull request.
+A sweep usually runs unattended on a schedule. Do not stop to ask questions. Anything you would ask goes to the review list and under "Needs you" in the pull request.
+
+## The review list
+
+The review list in kb's local folder holds every question kb is waiting on a person to answer, until they answer it with `/kb:review`. The pull request is read once; the list stays until the item is answered.
+
+- **Before you judge any doc,** read what the person already decided: `node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" list --json`. Follow those answers. Do not ask again about an answered doc.
+- **Every flag goes on the list**, with the same question you put in the pull request:
+
+  ```bash
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" add --doc <path> --question "<one sentence>" --would "<what you would do>" --why-not "<which check failed>" [--evidence "<proof>"]
+  ```
+
+  Exit code 4 means the person already answered this doc and it has not changed since. Do not flag it; follow the printed answer. An open item for the same doc is updated, not duplicated. `add` logs the flag for you.
+- **Every `Decide:` backlog entry** also goes on the list, with `--kind decide --doc <backlog file> --backlog "<entry title>"`.
+- When the pull request is open, attach it: `node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" link-pr --branch <your branch> --pr <url>`.
 
 ## 1. Set up
 
@@ -109,7 +124,7 @@ Every action goes in the local activity log, with the reason, so that a person c
 node "${CLAUDE_PLUGIN_ROOT}/scripts/log.mjs" sweep <action> <target> --why "<reason>" [--evidence "<commit, file or task>"] [--where <source name>]
 ```
 
-Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) right after you take the lock, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `flag`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log lives in the git directory, so it records your reasoning without adding to the pull request or the repository.
+Log each action right after you take it, not in a batch at the end, so the times show the order things happened in. Log `start` (target: the scope) right after you take the lock, and `finish` (target: the pull request link, or `clean`) at the end. In between, log one line per `delete`, `distill`, `backlog-add`, `backlog-prune`, `verify`, `config` change and outside `update`, with the source's name as `--where`. Flags are logged by `review.mjs add`. A doc you keep needs no line. `--why` says the reason in this case, not the kind of action: for a `backlog-add`, name the doc the item came from and what is still open. The log lives in the git directory, so it records your reasoning without adding to the pull request or the repository.
 
 ## 4. Order and budget
 

@@ -47,6 +47,12 @@ test('formatEntry keeps one line per entry', () => {
   assert.equal(line, '1970-01-01T00:00:00Z | distill | distill | x.md | repo |  | two lines |\n');
 });
 
+test('a runaway field is cut to MAX_FIELD', () => {
+  const line = formatEntry({ skill: 's', action: 'a', target: 't', why: 'x'.repeat(5000) }, new Date(0));
+  assert.ok(line.length < 700);
+  assert.match(line, /x…/);
+});
+
 test('missing --why is refused', () => {
   assert.throws(() => run(root, 'sweep', 'delete', 'docs/a.md'));
 });

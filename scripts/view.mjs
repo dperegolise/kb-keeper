@@ -23,6 +23,14 @@ function repoName(dir) {
   return path.basename(common) === '.git' ? path.basename(path.dirname(common)) : path.basename(common, '.git');
 }
 
+function readReview(dir) {
+  try {
+    return JSON.parse(readFileSync(path.join(dir, 'review.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
 export function render(cwd = process.cwd()) {
   const dir = kbDir(cwd);
   mkdirSync(dir, { recursive: true });
@@ -32,6 +40,7 @@ export function render(cwd = process.cwd()) {
     generated: new Date().toISOString(),
     path: log,
     log: existsSync(log) ? readFileSync(log, 'utf8') : '',
+    review: readReview(dir),
   };
   // `<` escaped so nothing in the log can close the script tag that holds it.
   const json = JSON.stringify(data).replace(/</g, '\\u003c');

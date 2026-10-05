@@ -81,6 +81,37 @@
   .empty-chart { color: var(--muted); font-size: 13px; padding: 24px 0; text-align: center; }
 
   .section { margin-top: 8px; }
+
+  .needs { margin-bottom: 24px; }
+  .needs-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .needs-head h2 { font-size: 16px; font-weight: 650; margin: 0; }
+  .needs-head .hint { color: var(--muted); font-size: 12px; }
+  .needs-head .hint code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink-2); }
+  .items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 860px) { .items { grid-template-columns: 1fr; } }
+  .item { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .item-top .kind { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-weight: 600; }
+  .item-top code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink-2); word-break: break-all; }
+  .item-top .age { margin-left: auto; white-space: nowrap; }
+  .item .q { font-size: 14px; font-weight: 600; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+  .item dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+  .item dt { color: var(--muted); }
+  .item dd { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+  .kind-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 16px 0 8px; }
+  .kind-head:first-of-type { margin-top: 0; }
+  .kind-head .n { color: var(--muted); font-weight: 400; }
+  .items .item.more { display: none; }
+  .items.all .item.more { display: flex; }
+  .show-all { margin-top: 10px; border: 1px solid var(--ring); background: var(--surface); color: var(--ink-2); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .show-all:hover { background: var(--surface-2); }
+  .item .foot { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: auto; }
+  .item .foot code { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .clear { padding: 16px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+  details.answered { margin-top: 12px; }
+  details.answered > summary { cursor: pointer; color: var(--ink-2); font-size: 13px; padding: 4px 0; }
+  details.answered table { margin-top: 8px; }
+  a { color: var(--s1); }
   .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 12px; }
   .seg { display: inline-flex; border: 1px solid var(--ring); border-radius: 8px; overflow: hidden; background: var(--surface); }
   .seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; padding: 6px 10px; cursor: pointer; }
@@ -381,6 +412,64 @@
     host.appendChild(svg);
   }
 
+  const ago = (t) => {
+    const ms = Date.now() - new Date(t).getTime();
+    if (isNaN(ms)) return '';
+    const d = Math.floor(ms / 86400e3), h = Math.floor(ms / 3600e3);
+    return d >= 1 ? `${d} day${d === 1 ? '' : 's'} ago` : h >= 1 ? `${h} hour${h === 1 ? '' : 's'} ago` : 'just now';
+  };
+
+  // Open items first, oldest first: the longer something has waited, the higher it sits. Flagged
+  // docs and decisions are listed apart, a few of each until "Show all".
+  const SHOW = 4;
+  const KINDS = [
+    { id: 'flag', label: 'Flagged docs', color: 'var(--s2)' },
+    { id: 'decide', label: 'Decisions', color: 'var(--s3)' },
+  ];
+  function needsPanel(open, answered) {
+    if (!open.length && !answered.length) return '';
+    const card = (r, i) => `
+      <article class="card item${i >= SHOW ? ' more' : ''}">
+        <div class="item-top">
+          <span class="kind"><i class="key" style="background:${r.kind === 'decide' ? 'var(--s3)' : 'var(--s2)'}"></i>${r.kind === 'decide' ? 'Decision' : 'Flagged doc'}</span>
+          <code>${esc(r.doc)}</code>
+          <span class="age">${esc(ago(r.created))}</span>
+        </div>
+        <p class="q">${esc(r.question.charAt(0).toUpperCase() + r.question.slice(1))}</p>
+        <dl>
+          ${r.would ? `<dt>kb would</dt><dd>${esc(r.would)}</dd>` : ''}
+          ${r.whyNot ? `<dt>Why it didn't</dt><dd>${esc(r.whyNot)}</dd>` : ''}
+          ${r.evidence ? `<dt>Evidence</dt><dd>${esc(r.evidence)}</dd>` : ''}
+        </dl>
+        <div class="foot"><code>${esc(r.id)}</code>${r.pr ? `<a href="${esc(r.pr)}" target="_blank" rel="noopener">pull request</a>` : ''}${r.branch ? `<span>${esc(r.branch)}</span>` : ''}</div>
+      </article>`;
+    const answeredHtml = answered.length ? `
+      <details class="answered">
+        <summary>Answered (${answered.length})</summary>
+        <div class="card"><table>
+          <thead><tr><th class="c-time">Answered</th><th class="c-target">Doc</th><th>Question</th><th>Answer</th></tr></thead>
+          <tbody>${answered.map((r) => `<tr>
+            <td class="time">${esc(fmtTime(r.answeredAt))}</td>
+            <td class="target"><code>${esc(r.doc)}</code></td>
+            <td class="why">${esc(r.question)}</td>
+            <td class="why">${esc(r.answer)}${r.outcome ? `<span class="ev">${esc(r.outcome)}</span>` : ''}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </details>` : '';
+    return `
+      <section class="needs">
+        <div class="needs-head"><h2>Needs you</h2><span class="hint">${open.length} open · answer them with <code>/kb:review</code></span></div>
+        ${open.length ? KINDS.map((k) => {
+          const list = open.filter((r) => (r.kind === 'decide') === (k.id === 'decide'));
+          if (!list.length) return '';
+          return `<div class="kind-head"><i class="key" style="background:${k.color}"></i>${k.label} <span class="n">${list.length}</span></div>
+            <div class="items" id="items-${k.id}">${list.map(card).join('')}</div>
+            ${list.length > SHOW ? `<button class="show-all" type="button" data-for="items-${k.id}" data-n="${list.length}">Show all ${list.length}</button>` : ''}`;
+        }).join('') : `<div class="card clear"><i class="key" style="background:var(--s3)"></i>Nothing waiting on you.</div>`}
+        ${answeredHtml}
+      </section>`;
+  }
+
   const GROUPS = {
     run: { label: 'Run', key: (e) => e.branch || '(no branch)' },
     action: { label: 'Action', key: (e) => (catOf(e) || { label: 'Run start and finish' }).label },
@@ -396,8 +485,13 @@
       (data.live ? ' · live' : data.generated ? ` · updated ${esc(fmtTime(data.generated))}` : '');
     document.getElementById('foot').innerHTML = data.path ? `Log: <code>${esc(data.path)}</code>` : '';
 
+    const review = Array.isArray(data.review) ? data.review : [];
+    const openItems = review.filter((r) => r.status === 'open').sort((a, b) => a.created.localeCompare(b.created));
+    const answered = review.filter((r) => r.status === 'answered').sort((a, b) => (b.answeredAt || '').localeCompare(a.answeredAt || ''));
+    const needsHtml = needsPanel(openItems, answered);
+
     if (!entries.length) {
-      app.innerHTML = `<div class="card nolog">No kb activity yet. Each sweep, distill and verify adds lines to the log, and this page fills in as they do.</div>`;
+      app.innerHTML = needsHtml + `<div class="card nolog">No kb activity yet. Each sweep, distill and verify adds lines to the log, and this page fills in as they do.</div>`;
       return;
     }
 
@@ -407,12 +501,12 @@
     const tiles = [
       { label: 'Actions', value: acts.length, note: `${runs} run${runs === 1 ? '' : 's'}` },
       { label: 'Retired', value: n('retired'), note: 'docs deleted or distilled', color: 'var(--s1)' },
-      { label: 'Flagged', value: n('flagged'), note: 'left for a person', color: 'var(--s2)' },
+      { label: 'Needs you', value: openItems.length, note: `${answered.length} answered`, color: 'var(--s2)' },
       { label: 'Backlog', value: n('backlog'), note: 'entries added or pruned', color: 'var(--s3)' },
       { label: 'Outside edits', value: n('outside'), note: 'changes outside the repo', color: 'var(--s5)' },
     ];
 
-    app.innerHTML = `
+    app.innerHTML = needsHtml + `
       <section class="tiles">${tiles.map((t) => `
         <div class="card tile">
           <div class="label">${t.color ? `<i class="key" style="background:${t.color}"></i>` : ''}${esc(t.label)}</div>
@@ -433,6 +527,12 @@
         </div>
         <div id="groups"></div>
       </section>`;
+
+    document.querySelectorAll('.show-all').forEach((b) => b.addEventListener('click', () => {
+      const list = document.getElementById(b.dataset.for);
+      const all = list.classList.toggle('all');
+      b.textContent = all ? 'Show fewer' : `Show all ${b.dataset.n}`;
+    }));
 
     const draw = () => {
       activityChart(document.getElementById('c-activity'), acts, (t) => { document.getElementById('d-activity').textContent = t; });
